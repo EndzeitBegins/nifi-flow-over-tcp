@@ -28,6 +28,7 @@ import net.nerdfunk.nifi.flow.transport.netty.NettyFlowSenderFactory;
 import net.nerdfunk.nifi.flow.transport.netty.NettyFlowAndAttributesSenderFactory;
 import net.nerdfunk.nifi.flow.transport.netty.NettyFlowContentOnlySenderFactory;
 import net.nerdfunk.nifi.flow.transport.message.FlowMessage;
+import org.apache.nifi.expression.ExpressionLanguageScope;
 import org.apache.nifi.flowfile.FlowFile;
 import org.apache.nifi.processor.ProcessContext;
 import org.apache.nifi.processor.ProcessSession;
@@ -159,6 +160,7 @@ public class PutFlow2TCP extends AbstractPutFlow2TcpProcessor<InputStream, FlowM
             .Builder().name("Encoder")
             .description("The encoder.")
             .required(true)
+            .expressionLanguageSupported(ExpressionLanguageScope.NONE)
             .allowableValues(FLOW_AND_ATTRIBUTES, FLOW_ONLY)
             .defaultValue(FLOW_AND_ATTRIBUTES.getValue())
             .build();
@@ -278,7 +280,7 @@ public class PutFlow2TCP extends AbstractPutFlow2TcpProcessor<InputStream, FlowM
      */
     @Override
     public void onTrigger(final ProcessContext context, final ProcessSessionFactory sessionFactory) throws ProcessException {
-        final String configured_encoder = context.getProperty(ENCODER).evaluateAttributeExpressions().getValue();
+        final String configured_encoder = context.getProperty(ENCODER).getValue();
         final ProcessSession session = sessionFactory.createSession();
         final FlowFile flowFile = session.get();
         if (flowFile == null) {
@@ -386,7 +388,7 @@ public class PutFlow2TCP extends AbstractPutFlow2TcpProcessor<InputStream, FlowM
             final String hostname,
             final int port) {
 
-        final String configured_encoder = context.getProperty(ENCODER).evaluateAttributeExpressions().getValue();
+        final String configured_encoder = context.getProperty(ENCODER).getValue();
 
         if (FLOW_ONLY.getValue().equalsIgnoreCase(configured_encoder)) {
             return new NettyFlowContentOnlySenderFactory(getLogger(), hostname, port);
