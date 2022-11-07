@@ -33,7 +33,11 @@ dependencies {
 
     // testing
     testImplementation("org.junit.jupiter:junit-jupiter:5.9.0")
-    implementation("org.apache.nifi:nifi-mock:$niFiVersion")
+    testImplementation("com.natpryce:hamkrest:1.8.0.1")
+    testImplementation("org.apache.nifi:nifi-mock:$niFiVersion")
+    testImplementation("org.apache.mina:mina-core:2.2.1")
+    testImplementation("org.slf4j:slf4j-simple:2.0.3")
+    testImplementation("com.fasterxml.jackson.module:jackson-module-kotlin:2.14.0")
 }
 
 tasks {
