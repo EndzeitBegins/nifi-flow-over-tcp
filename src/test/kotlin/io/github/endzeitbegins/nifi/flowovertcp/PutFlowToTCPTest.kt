@@ -18,9 +18,7 @@ class PutFlowToTCPTest {
 
     private val port = 27412
 
-    private val testRunner = newTestRunner<PutFlow2TCP> {
-        setProperty(PutFlow2TCP.PORT, "$port")
-    }
+    private val testRunner = newTestRunner<PutFlow2TCP>()
 
     private val tcpServer = tcpServer()
 
@@ -35,6 +33,7 @@ class PutFlowToTCPTest {
         tcpServer.clearCache()
 
         testRunner.setProperty(PutFlow2TCP.INCLUDE_CORE_ATTRIBUTES, "false")
+        testRunner.setProperty(PutFlow2TCP.PORT, "$port")
     }
 
     @AfterAll
@@ -77,15 +76,40 @@ class PutFlowToTCPTest {
         })
     }
 
+    @Test
+    fun `supports transfer of FlowFiles with no attributes and non-empty content`() {
+        val flowFile = TestFlowFile(
+            attributes = emptyMap(),
+            content = "Hello test!".toByteArray().asList()
+        )
+
+        testRunner.enqueue(flowFile)
+        testRunner.run()
+
+        testRunner.assertAllFlowFilesTransferred(PutFlow2TCP.REL_SUCCESS, 1)
+        val transferredFlowFiles = tcpServer.receivedBytes.values.map { it.toTestFlowFile() }
+        assertThat(transferredFlowFiles, hasSize(equalTo(1)))
+        assertThat(transferredFlowFiles[0], equalTo(flowFile))
+    }
+
+    @Test
+    internal fun `moves FlowFile to failure relationship, when target server cannot be reached`() {
+        val flowFile = TestFlowFile(
+            attributes = mapOf("foo" to "bar"),
+            content = "Hello failing test!".toByteArray().asList()
+        )
+        testRunner.setProperty(PutFlow2TCP.PORT, "${port + 42}")
+
+        testRunner.enqueue(flowFile)
+        testRunner.run()
+
+        testRunner.assertAllFlowFilesTransferred(PutFlow2TCP.REL_FAILURE, 1)
+    }
+
     /*
         TODO
-         - no attributes, no content
-         - only attributes
-         - only content
-         - no receiver
          - large file
          - large amount?
-         - with / without core attributes
      */
 
 
