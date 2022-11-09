@@ -6,7 +6,7 @@ import org.apache.mina.core.session.IoSession
 import org.apache.mina.transport.socket.nio.NioSocketAcceptor
 import java.net.InetSocketAddress
 
-internal class MinaTcpServer: TcpServer {
+internal class MinaTestTcpServer: TestTcpServer {
 
     private val bytes = mutableMapOf<Long, ByteArray>()
     override val receivedBytes: Map<Long, ByteArray> = bytes
