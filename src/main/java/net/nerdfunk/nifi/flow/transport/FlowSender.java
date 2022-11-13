@@ -25,12 +25,6 @@ import net.nerdfunk.nifi.flow.transport.message.FlowMessage;
  * @param <T,U> Flow Type and Message Header
  */
 public interface FlowSender<T,U> extends AutoCloseable {
-    /**
-     * Send Flow
-     *
-     * @param flow Flow
-     */
-    void sendFlow(T flow);
 
     /**
      * Aquires a new channel from Channel Pool
@@ -53,14 +47,6 @@ public interface FlowSender<T,U> extends AutoCloseable {
      * @param m Header with Attributes
      */
     public void sendAttributesAndFlush(Channel channel, final U m);
-
-    /**
-     * send data
-     * 
-     * @param channel
-     * @param data 
-     */
-    public void send(Channel channel, final T data);
 
     /**
      * realeases channel

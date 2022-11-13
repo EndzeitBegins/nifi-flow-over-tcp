@@ -18,6 +18,10 @@ group = "io.github.endzeitbegins"
 
 val niFiVersion = "1.18.0"
 
+kotlin {
+    explicitApi()
+}
+
 dependencies {
     // Apache NiFi
     implementation("org.apache.nifi:nifi-api:$niFiVersion")

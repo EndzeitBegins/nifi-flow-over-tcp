@@ -5,14 +5,11 @@ import com.natpryce.hamkrest.equalTo
 import com.natpryce.hamkrest.hasElement
 import com.natpryce.hamkrest.hasSize
 import io.github.endzeitbegins.nifi.flowovertcp.testing.TestFlowFile
-import io.github.endzeitbegins.nifi.flowovertcp.testing.coreAttributes
+import io.github.endzeitbegins.nifi.flowovertcp.internal.attributes.coreAttributes
 import io.github.endzeitbegins.nifi.flowovertcp.testing.tcp.testTcpServer
 import io.github.endzeitbegins.nifi.flowovertcp.testing.testrunner.enqueue
 import io.github.endzeitbegins.nifi.flowovertcp.testing.testrunner.newTestRunner
 import io.github.endzeitbegins.nifi.flowovertcp.testing.toTestFlowFile
-import net.nerdfunk.nifi.processors.PutFlow2TCP
-import org.apache.nifi.flowfile.FlowFile
-import org.apache.nifi.util.MockFlowFile
 import org.junit.jupiter.api.*
 import java.io.InputStream
 import kotlin.random.Random
@@ -22,7 +19,7 @@ class PutFlowToTCPTest {
 
     private val port = 27412
 
-    private val testRunner = newTestRunner<PutFlow2TCP>()
+    private val testRunner = newTestRunner<PutFlowToTCP>()
 
     private val tcpServer = testTcpServer()
 
@@ -32,13 +29,16 @@ class PutFlowToTCPTest {
     }
 
     @BeforeEach
-    internal fun setUp() {
+    fun setUp() {
         testRunner.clearTransferState()
+        testRunner.clearProperties()
         tcpServer.clearCache()
 
         testRunner.threadCount = 1
-        testRunner.setProperty(PutFlow2TCP.INCLUDE_CORE_ATTRIBUTES, "false")
-        testRunner.setProperty(PutFlow2TCP.PORT, "$port")
+        testRunner.setClustered(false)
+
+        testRunner.setProperty(PutFlowToTCP.INCLUDE_CORE_ATTRIBUTES, "false")
+        testRunner.setProperty(PutFlowToTCP.PORT, "$port")
     }
 
     @AfterAll
@@ -56,29 +56,10 @@ class PutFlowToTCPTest {
 
         testRunner.run()
 
-        testRunner.assertAllFlowFilesTransferred(PutFlow2TCP.REL_SUCCESS, 1)
+        testRunner.assertAllFlowFilesTransferred(PutFlowToTCP.REL_SUCCESS, 1)
         val transferredFlowFiles = tcpServer.receivedBytes.values.map { it.toTestFlowFile() }
         assertThat(transferredFlowFiles, hasSize(equalTo(1)))
         assertThat(transferredFlowFiles[0], equalTo(flowFile))
-    }
-
-    @Test
-    fun `supports transfer of FlowFiles with core attributes and empty content`() {
-        val flowFile = TestFlowFile(
-            attributes = emptyMap(),
-            content = emptyList()
-        )
-        testRunner.setProperty(PutFlow2TCP.INCLUDE_CORE_ATTRIBUTES, "true")
-        testRunner.enqueue(flowFile)
-
-        testRunner.run()
-
-        testRunner.assertAllFlowFilesTransferred(PutFlow2TCP.REL_SUCCESS, 1)
-        val transferredFlowFiles = tcpServer.receivedBytes.values.map { it.toTestFlowFile() }
-        assertThat(transferredFlowFiles, hasSize(equalTo(1)))
-        assertAll(transferredFlowFiles[0].attributes.keys.map { attributeKey ->
-            { assertThat(coreAttributes, hasElement(attributeKey)) }
-        })
     }
 
     @Test
@@ -91,28 +72,47 @@ class PutFlowToTCPTest {
 
         testRunner.run()
 
-        testRunner.assertAllFlowFilesTransferred(PutFlow2TCP.REL_SUCCESS, 1)
+        testRunner.assertAllFlowFilesTransferred(PutFlowToTCP.REL_SUCCESS, 1)
         val transferredFlowFiles = tcpServer.receivedBytes.values.map { it.toTestFlowFile() }
         assertThat(transferredFlowFiles, hasSize(equalTo(1)))
         assertThat(transferredFlowFiles[0], equalTo(flowFile))
     }
 
     @Test
-    internal fun `moves FlowFile to failure relationship, when target server cannot be reached`() {
+    fun `supports transfer of FlowFiles with attributes and empty content`() {
         val flowFile = TestFlowFile(
-            attributes = mapOf("foo" to "bar"),
-            content = "Hello failing test!".toByteArray().asList()
+            attributes = mapOf(
+                "foo" to "bar",
+                "nyan" to "cat",
+            ),
+            content = emptyList(),
         )
-        testRunner.setProperty(PutFlow2TCP.PORT, "${port + 42}")
         testRunner.enqueue(flowFile)
 
         testRunner.run()
 
-        testRunner.assertAllFlowFilesTransferred(PutFlow2TCP.REL_FAILURE, 1)
+        testRunner.assertAllFlowFilesTransferred(PutFlowToTCP.REL_SUCCESS, 1)
+        val transferredFlowFiles = tcpServer.receivedBytes.values.map { it.toTestFlowFile() }
+        assertThat(transferredFlowFiles, hasSize(equalTo(1)))
+        assertThat(transferredFlowFiles[0], equalTo(flowFile))
     }
 
     @Test
-    internal fun `supports transfer of FlowFiles with large content`() {
+    fun `moves FlowFile to failure relationship, when target server cannot be reached`() {
+        val flowFile = TestFlowFile(
+            attributes = mapOf("foo" to "bar"),
+            content = "Hello failing test!".toByteArray().asList()
+        )
+        testRunner.setProperty(PutFlowToTCP.PORT, "${port + 42}")
+        testRunner.enqueue(flowFile)
+
+        testRunner.run()
+
+        testRunner.assertAllFlowFilesTransferred(PutFlowToTCP.REL_FAILURE, 1)
+    }
+
+    @Test
+    fun `supports transfer of FlowFiles with large content`() {
         // the MockProcessSession used by the StandardProcessorTestRunner
         //   loads the content of every FlowFile into an ByteArray
         // thus using to large contents yields a "java.lang.OutOfMemoryError: Java heap space"
@@ -132,14 +132,14 @@ class PutFlowToTCPTest {
 
         testRunner.run()
 
-        testRunner.assertAllFlowFilesTransferred(PutFlow2TCP.REL_SUCCESS, 1)
+        testRunner.assertAllFlowFilesTransferred(PutFlowToTCP.REL_SUCCESS, 1)
         testRunner.assertAllFlowFiles { flowFile ->
             assertThat(flowFile.size, equalTo(expectedByteLength))
         }
     }
 
     @Test
-    internal fun `supports transfer of large amount of FlowFiles`() {
+    fun `supports transfer of large amount of FlowFiles`() {
         val iterations = 2_500
         val expectedIndices = (0 until iterations).toSet()
         repeat(iterations) { index ->
@@ -152,14 +152,14 @@ class PutFlowToTCPTest {
 
         testRunner.run(iterations)
 
-        testRunner.assertAllFlowFilesTransferred(PutFlow2TCP.REL_SUCCESS, iterations)
-        val flowFiles = testRunner.getFlowFilesForRelationship(PutFlow2TCP.REL_SUCCESS)
+        testRunner.assertAllFlowFilesTransferred(PutFlowToTCP.REL_SUCCESS, iterations)
+        val flowFiles = testRunner.getFlowFilesForRelationship(PutFlowToTCP.REL_SUCCESS)
         val actualIndices = flowFiles.map { it.attributes.getValue("index").toInt() }.toSet()
         assertThat(actualIndices, equalTo(expectedIndices))
     }
 
     @Test
-    internal fun `supports multi-threaded execution of processor`() {
+    fun `supports multi-threaded execution of processor`() {
         val iterations = 300
         val expectedIndices = (0 until iterations).toSet()
         repeat(iterations) { index ->
@@ -173,9 +173,161 @@ class PutFlowToTCPTest {
 
         testRunner.run(iterations)
 
-        testRunner.assertAllFlowFilesTransferred(PutFlow2TCP.REL_SUCCESS, iterations)
-        val flowFiles = testRunner.getFlowFilesForRelationship(PutFlow2TCP.REL_SUCCESS)
+        testRunner.assertAllFlowFilesTransferred(PutFlowToTCP.REL_SUCCESS, iterations)
+        val flowFiles = testRunner.getFlowFilesForRelationship(PutFlowToTCP.REL_SUCCESS)
         val actualIndices = flowFiles.map { it.attributes.getValue("index").toInt() }.toSet()
         assertThat(actualIndices, equalTo(expectedIndices))
+    }
+
+    @Test
+    fun `supports clustered execution of processor`() {
+        val iterations = 300
+        val expectedIndices = (0 until iterations).toSet()
+        repeat(iterations) { index ->
+            val flowFile = TestFlowFile(
+                attributes = mapOf("index" to "$index"),
+                content = "Hello file no. $index!".toByteArray().asList()
+            )
+            testRunner.enqueue(flowFile)
+        }
+        testRunner.setClustered(true)
+
+        testRunner.run(iterations)
+
+        testRunner.assertAllFlowFilesTransferred(PutFlowToTCP.REL_SUCCESS, iterations)
+        val flowFiles = testRunner.getFlowFilesForRelationship(PutFlowToTCP.REL_SUCCESS)
+        val actualIndices = flowFiles.map { it.attributes.getValue("index").toInt() }.toSet()
+        assertThat(actualIndices, equalTo(expectedIndices))
+    }
+
+    @Nested
+    inner class RegardingAttributeFilter {
+
+        @Test
+        fun `supports filtering attributes to transfer with list of attribute names`() {
+            val flowFile = TestFlowFile(
+                attributes = mapOf(
+                    "foo" to "keep",
+                    "fOo" to "wrong case",
+                    "bar" to "not included",
+                    "other" to "keep as well",
+                ),
+                content = emptyList(),
+            )
+            testRunner.setProperty(PutFlowToTCP.ATTRIBUTES_LIST, "foo, other , missing")
+            testRunner.enqueue(flowFile)
+
+            testRunner.run()
+
+            testRunner.assertAllFlowFilesTransferred(PutFlowToTCP.REL_SUCCESS, 1)
+            val transferredFlowFiles = tcpServer.receivedBytes.values.map { it.toTestFlowFile() }
+            assertThat(transferredFlowFiles, hasSize(equalTo(1)))
+            assertThat(transferredFlowFiles[0].attributes.keys, equalTo(setOf("foo", "other", "missing")))
+        }
+
+        @Test
+        fun `supports filtering attributes to transfer with attribute name regex`() {
+            val flowFile = TestFlowFile(
+                attributes = mapOf(
+                    "foo" to "keep",
+                    "fofoo" to "wrong start",
+                    "food" to "wrong end",
+                    "foooooooo" to "keep as well",
+                ),
+                content = emptyList(),
+            )
+            testRunner.setProperty(PutFlowToTCP.ATTRIBUTES_REGEX, "^f[o]+$")
+            testRunner.enqueue(flowFile)
+
+            testRunner.run()
+
+            testRunner.assertAllFlowFilesTransferred(PutFlowToTCP.REL_SUCCESS, 1)
+            val transferredFlowFiles = tcpServer.receivedBytes.values.map { it.toTestFlowFile() }
+            assertThat(transferredFlowFiles, hasSize(equalTo(1)))
+            assertThat(transferredFlowFiles[0].attributes.keys, equalTo(setOf("foo", "foooooooo")))
+        }
+
+        @Test
+        fun `supports filtering attributes whose name are either on list or match regex`() {
+            val flowFile = TestFlowFile(
+                attributes = mapOf(
+                    "bar" to "keep as well",
+                    "noo" to "neither",
+                    "foo" to "keep",
+                ),
+                content = emptyList(),
+            )
+            testRunner.setProperty(PutFlowToTCP.ATTRIBUTES_LIST, "bar")
+            testRunner.setProperty(PutFlowToTCP.ATTRIBUTES_REGEX, "^foo$")
+            testRunner.enqueue(flowFile)
+
+            testRunner.run()
+
+            testRunner.assertAllFlowFilesTransferred(PutFlowToTCP.REL_SUCCESS, 1)
+            val transferredFlowFiles = tcpServer.receivedBytes.values.map { it.toTestFlowFile() }
+            assertThat(transferredFlowFiles, hasSize(equalTo(1)))
+            assertThat(transferredFlowFiles[0].attributes.keys, equalTo(setOf("bar", "foo")))
+        }
+
+        @Test
+        fun `supports filtering out core attributes`() {
+            val flowFile = TestFlowFile(
+                attributes = emptyMap(),
+                content = emptyList()
+            )
+            testRunner.setProperty(PutFlowToTCP.INCLUDE_CORE_ATTRIBUTES, "true")
+            testRunner.enqueue(flowFile)
+
+            testRunner.run()
+
+            testRunner.assertAllFlowFilesTransferred(PutFlowToTCP.REL_SUCCESS, 1)
+            val transferredFlowFiles = tcpServer.receivedBytes.values.map { it.toTestFlowFile() }
+            assertThat(transferredFlowFiles, hasSize(equalTo(1)))
+            assertAll(transferredFlowFiles[0].attributes.keys.map { attributeKey ->
+                { assertThat(coreAttributes, hasElement(attributeKey)) }
+            })
+        }
+    }
+
+    @Nested
+    inner class RegardingMissingValues {
+        @Test
+        fun `uses null for missing values, when NULL_VALUE_FOR_EMPTY_STRING is set to true`() {
+            val flowFile = TestFlowFile(
+                attributes = emptyMap(),
+                content = emptyList()
+            )
+            testRunner.setProperty(PutFlowToTCP.NULL_VALUE_FOR_EMPTY_STRING, "true")
+            testRunner.setProperty(PutFlowToTCP.ATTRIBUTES_LIST, "missing")
+            testRunner.enqueue(flowFile)
+
+            testRunner.run()
+
+            testRunner.assertAllFlowFilesTransferred(PutFlowToTCP.REL_SUCCESS, 1)
+            val transferredFlowFiles = tcpServer.receivedBytes.values.map { it.toTestFlowFile() }
+            assertThat(transferredFlowFiles, hasSize(equalTo(1)))
+            val attributeValues = transferredFlowFiles[0].attributes.values
+            assertThat(attributeValues.size, equalTo(1))
+            assertThat(attributeValues.single(), equalTo(null))
+        }
+
+        @Test
+        fun `uses empty string for missing values, when NULL_VALUE_FOR_EMPTY_STRING is set to false`() {
+            val flowFile = TestFlowFile(
+                attributes = emptyMap(),
+                content = emptyList()
+            )
+            testRunner.setProperty(PutFlowToTCP.NULL_VALUE_FOR_EMPTY_STRING, "false")
+            testRunner.setProperty(PutFlowToTCP.ATTRIBUTES_LIST, "missing")
+            testRunner.enqueue(flowFile)
+
+            testRunner.run()
+
+            testRunner.assertAllFlowFilesTransferred(PutFlowToTCP.REL_SUCCESS, 1)
+            val transferredFlowFiles = tcpServer.receivedBytes.values.map { it.toTestFlowFile() }
+            val attributeValues = transferredFlowFiles[0].attributes.values
+            assertThat(attributeValues.size, equalTo(1))
+            assertThat(attributeValues.single(), equalTo(""))
+        }
     }
 }

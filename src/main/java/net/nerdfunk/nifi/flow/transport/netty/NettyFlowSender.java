@@ -91,17 +91,7 @@ class NettyFlowSender<T,U> implements FlowSender<T,U> {
         final ChannelFuture channelFuture = channel.writeAndFlush(data);
         channelFuture.syncUninterruptibly();
     }
-    /**
-     * send arbitrary data
-     * 
-     * @param channel
-     * @param data 
-     */
-    @Override
-    public void send(Channel channel, final T data) {
-            final ChannelFuture channelFuture = channel.write(data);
-            channelFuture.syncUninterruptibly();
-    }
+
     /**
      * realeases channel
      * 
@@ -110,27 +100,6 @@ class NettyFlowSender<T,U> implements FlowSender<T,U> {
     @Override
     public void realeaseChannel(Channel channel) {
         releaseChannel(channel);
-    }
-
-    /**
-     * Send Event using Channel acquired from Channel Pool
-     *
-     * @param event Event
-     */
-    @Override
-    public void sendFlow(final T event) { 
-        try {
-            final Future<Channel> futureChannel = channelPool.acquire().sync();
-            final Channel channel = futureChannel.get();
-            try {
-                final ChannelFuture channelFuture = channel.writeAndFlush(event);
-                channelFuture.syncUninterruptibly();
-            } finally {
-                    releaseChannel(channel);
-            }
-        } catch (final Exception e) {
-            throw new FlowException(getChannelMessage("Send Failed"), e);
-        }
     }
 
     /**
