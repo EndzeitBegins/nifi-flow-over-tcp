@@ -13,4 +13,4 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 net.nerdfunk.nifi.processors.ListenTCP2flow
-net.nerdfunk.nifi.processors.PutFlow2TCP
+io.github.endzeitbegins.nifi.flowovertcp.PutFlowToTCP

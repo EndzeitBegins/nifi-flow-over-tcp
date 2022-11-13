@@ -24,6 +24,7 @@ import java.net.UnknownHostException;
 import java.util.HashSet;
 import java.util.Set;
 
+import io.github.endzeitbegins.nifi.flowovertcp.PutFlowToTCP;
 import org.apache.nifi.annotation.behavior.InputRequirement;
 import org.apache.nifi.annotation.lifecycle.OnScheduled;
 import org.apache.nifi.annotation.lifecycle.OnStopped;
@@ -48,9 +49,9 @@ import org.apache.nifi.security.util.ClientAuth;
 
 @Tags({"listen", "tcp2flow", "tcp", "tls", "ssl"})
 @CapabilityDescription("Listens for incoming TCP connections and reads data from each connection. " +
-        "When using the PutFlow2TCP processor the TCP stream contains the attributes " +
+        "When using the PutFlowToTCP processor the TCP stream contains the attributes " +
         "of the origin flowfile. These attributes are written to the new flowfile.")
-@SeeAlso(PutFlow2TCP.class)
+@SeeAlso(PutFlowToTCP.class)
 @InputRequirement(InputRequirement.Requirement.INPUT_FORBIDDEN)
 public class ListenTCP2flow extends AbstractSessionFactoryProcessor {
 
