@@ -1,30 +1,11 @@
-/*
- * Licensed to the Apache Software Foundation (ASF) under one or more
- * contributor license agreements.  See the NOTICE file distributed with
- * this work for additional information regarding copyright ownership.
- * The ASF licenses this file to You under the Apache License, Version 2.0
- * (the "License"); you may not use this file except in compliance with
- * the License.  You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
 package io.github.endzeitbegins.nifi.flowovertcp
 
 import io.github.endzeitbegins.nifi.flowovertcp.internal.attributes.AttributePredicate
 import io.github.endzeitbegins.nifi.flowovertcp.internal.attributes.Attributes
 import io.github.endzeitbegins.nifi.flowovertcp.internal.attributes.or
-import io.github.endzeitbegins.nifi.flowovertcp.internal.objectMapper
 import io.github.endzeitbegins.nifi.flowovertcp.internal.put.*
-import io.netty.channel.Channel
-import net.nerdfunk.nifi.flow.transport.FlowSender
-import net.nerdfunk.nifi.flow.transport.message.FlowMessage
-import net.nerdfunk.nifi.flow.transport.netty.NettyFlowAndAttributesSenderFactory
+import io.github.endzeitbegins.nifi.flowovertcp.internal.transmission.send.FlowSender
+import io.github.endzeitbegins.nifi.flowovertcp.internal.transmission.send.createFlowSender
 import net.nerdfunk.nifi.processors.ListenTCP2flow
 import org.apache.nifi.annotation.behavior.InputRequirement
 import org.apache.nifi.annotation.documentation.CapabilityDescription
@@ -41,7 +22,6 @@ import org.apache.nifi.processor.ProcessSession
 import org.apache.nifi.processor.Relationship
 import org.apache.nifi.processor.util.StandardValidators
 import org.apache.nifi.ssl.SSLContextService
-import java.io.InputStream
 import kotlin.system.measureTimeMillis
 
 @CapabilityDescription(
@@ -215,38 +195,40 @@ public class PutFlowToTCP : AbstractProcessor() {
     override fun getRelationships(): Set<Relationship> = relationships
     override fun getSupportedPropertyDescriptors(): List<PropertyDescriptor> = descriptors
 
-    private var flowSenderField: FlowSender<InputStream, FlowMessage>? = null
+    private var flowSender: FlowSender<*>? = null
 
     @OnScheduled
     public fun onScheduled(context: ProcessContext) {
-        flowSenderField = getFlowSender(context)
+        flowSender = createFlowSender(context)
     }
 
     @OnStopped
     public fun onStopped() {
-        flowSenderField?.close()
+        flowSender?.close()
     }
 
     override fun onTrigger(context: ProcessContext, session: ProcessSession) {
-        val flowFile = session.get() ?: return
+        val flowFile = session.get()
+            ?: return
 
-        val flowSender: FlowSender<InputStream, FlowMessage>? = flowSenderField
-        var channel: Channel? = null
+        val flowSender: FlowSender<*>? = flowSender
 
         try {
             checkNotNull(flowSender) { "FlowSender has not been properly initialized!" }
-            channel = flowSender.acquireChannel()
 
             val transmissionTimeInMs = measureTimeMillis {
-                val attributesToTransmit = flowFile.filterAttributesToTransmit(context)
+                flowSender.useChannel { channel ->
+                    val attributesToTransmit = flowFile.filterAttributesToTransmit(context)
 
-                flowSender.sendHeaderAndFlowFileAttributes(
-                    channel = channel,
-                    attributesToTransmit = attributesToTransmit,
-                    payloadLength = flowFile.size
-                )
+                    session.read(flowFile) { contentStream ->
+                        channel.sendFlow(
+                            attributes = attributesToTransmit,
+                            contentLength = flowFile.size,
+                            content = contentStream,
+                        )
+                    }
 
-                flowSender.sendFlowFileContent(channel = channel, session = session, flowFile = flowFile)
+                }
             }
 
             val transitUri = "tcp://${context.hostname}:${context.port}"
@@ -264,43 +246,7 @@ public class PutFlowToTCP : AbstractProcessor() {
                 arrayOf<Any>(flowFile),
                 exception
             )
-        } finally {
-            if (flowSender != null && channel != null) {
-                flowSender.realeaseChannel(channel)
-            }
         }
-    }
-
-    private fun FlowSender<InputStream, FlowMessage>.sendHeaderAndFlowFileAttributes(
-        channel: Channel,
-        attributesToTransmit: Attributes,
-        payloadLength: Long
-    ) {
-        val attributesAsBytes = objectMapper.writeValueAsBytes(attributesToTransmit)
-
-        val headerLength = attributesAsBytes.size
-
-        val header = FlowMessage().apply {
-            this.headerlength = headerLength
-            this.payloadlength = payloadLength
-            this.header = attributesAsBytes
-        }
-
-        logger.debug("Sending header with headerLength=$headerLength and payloadLength=$payloadLength and attributes...")
-        sendAttributesAndFlush(channel, header)
-        logger.debug("Sent header and attributes.")
-    }
-
-    private fun FlowSender<InputStream, FlowMessage>.sendFlowFileContent(
-        channel: Channel,
-        session: ProcessSession,
-        flowFile: FlowFile
-    ) {
-        val flowFileContentSize = flowFile.size
-
-        logger.debug("Sending FlowFile content of $flowFileContentSize bytes...")
-        session.read(flowFile) { contentStream -> sendDataAndFlush(channel, contentStream) }
-        logger.debug("FlowFile content of $flowFileContentSize bytes sent.")
     }
 
     private fun FlowFile.filterAttributesToTransmit(
@@ -343,21 +289,18 @@ public class PutFlowToTCP : AbstractProcessor() {
         }
     }
 
-    private fun getFlowSender(context: ProcessContext): FlowSender<InputStream, FlowMessage> {
-        val factory = NettyFlowAndAttributesSenderFactory(logger, context.hostname, context.port)
-        factory.setThreadNamePrefix(String.format("%s[%s]", javaClass.simpleName, identifier))
-        factory.setWorkerThreads(context.maxConcurrentTasks)
-        factory.setMaxConnections(context.maxConcurrentTasks)
-        factory.setSocketSendBufferSize(context.maxSocketSendBufferSize)
-        factory.setSingleFlowPerConnection(context.singleConnectionPerFlowFile)
-        factory.setTimeout(context.timeout)
+    private fun createFlowSender(context: ProcessContext): FlowSender<*> = createFlowSender(
+        hostname = context.hostname,
+        port = context.port,
 
-        context.sslContextService?.also { sslContextService ->
-            factory.setSslContext(sslContextService.createContext())
-        }
+        separateConnectionPerFlowFile = context.separateConnectionPerFlowFile,
 
-        return factory.flowSender
-    }
+        maxConcurrentTasks = context.maxConcurrentTasks,
+        maxSocketSendBufferSize = context.maxSocketSendBufferSize,
+        timeout = context.timeout,
+        sslContext = context.sslContextService?.createContext(),
+
+        logger = logger,
+        logPrefix = "${javaClass.simpleName}[$identifier]",
+    )
 }
-
-

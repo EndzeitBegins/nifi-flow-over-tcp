@@ -49,7 +49,7 @@ internal val ProcessContext.sslContextService: SSLContextService?
         } else null
     }
 
-internal val ProcessContext.singleConnectionPerFlowFile: Boolean
+internal val ProcessContext.separateConnectionPerFlowFile: Boolean
     get() = getProperty(PutFlowToTCP.CONNECTION_PER_FLOWFILE).asBoolean()
 
 internal val ProcessContext.timeout: Duration
