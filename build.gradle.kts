@@ -36,7 +36,7 @@ dependencies {
     implementation("commons-net:commons-net:3.8.0")
 
     // testing
-    testImplementation("org.junit.jupiter:junit-jupiter:5.9.0")
+    testImplementation("org.junit.jupiter:junit-jupiter:5.9.1")
     testImplementation("com.natpryce:hamkrest:1.8.0.1")
     testImplementation("org.apache.nifi:nifi-mock:$niFiVersion")
     testImplementation("org.apache.mina:mina-core:2.2.1")
