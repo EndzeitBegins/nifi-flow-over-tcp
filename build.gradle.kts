@@ -64,6 +64,21 @@ publishing {
             description.set("A Apache NiFi Archive (.nar) with Processor implementations for transmitting FlowFiles over bare TCP.")
             url.set("https://github.com/EndzeitBegins/nifi-flow-over-tcp")
 
+            licenses {
+                license {
+                    name.set("The Apache License, Version 2.0")
+                    url.set("https://www.apache.org/licenses/LICENSE-2.0.txt")
+                }
+            }
+
+            developers {
+                developer {
+                    id.set("endzeitbegins")
+                    name.set("EndzeitBegins")
+                    email.set("io.github.endzeitbegins@gmail.com")
+                }
+            }
+
             scm {
                 connection.set("scm:git:git://github.com/EndzeitBegins/nifi-flow-over-tcp.git")
                 developerConnection.set("scm:git:ssh://github.com/EndzeitBegins/nifi-flow-over-tcp.git")
