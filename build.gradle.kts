@@ -2,7 +2,7 @@ import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 
 plugins {
     java
-    kotlin("jvm") version "1.7.20"
+    kotlin("jvm") version "1.7.21"
     id("io.github.lhotari.gradle-nar-plugin") version "0.5.1"
     signing
     `maven-publish`
