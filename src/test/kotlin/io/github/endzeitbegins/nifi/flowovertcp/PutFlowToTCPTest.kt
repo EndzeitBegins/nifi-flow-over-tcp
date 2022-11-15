@@ -4,6 +4,8 @@ import com.natpryce.hamkrest.assertion.assertThat
 import com.natpryce.hamkrest.equalTo
 import com.natpryce.hamkrest.hasElement
 import com.natpryce.hamkrest.hasSize
+import io.github.endzeitbegins.nifi.flowovertcp.PutFlowToTCP.Companion.REL_FAILURE
+import io.github.endzeitbegins.nifi.flowovertcp.PutFlowToTCP.Companion.REL_SUCCESS
 import io.github.endzeitbegins.nifi.flowovertcp.testing.flowfile.TestFlowFile
 import io.github.endzeitbegins.nifi.flowovertcp.internal.attributes.coreAttributes
 import io.github.endzeitbegins.nifi.flowovertcp.testing.tcp.testTcpServer
@@ -56,7 +58,7 @@ class PutFlowToTCPTest {
 
         testRunner.run()
 
-        testRunner.assertAllFlowFilesTransferred(PutFlowToTCP.REL_SUCCESS, 1)
+        testRunner.assertAllFlowFilesTransferred(REL_SUCCESS, 1)
         val transferredFlowFiles = tcpServer.receivedBytes.values.map { it.toTestFlowFile() }
         assertThat(transferredFlowFiles, hasSize(equalTo(1)))
         assertThat(transferredFlowFiles[0], equalTo(flowFile))
@@ -72,7 +74,7 @@ class PutFlowToTCPTest {
 
         testRunner.run()
 
-        testRunner.assertAllFlowFilesTransferred(PutFlowToTCP.REL_SUCCESS, 1)
+        testRunner.assertAllFlowFilesTransferred(REL_SUCCESS, 1)
         val transferredFlowFiles = tcpServer.receivedBytes.values.map { it.toTestFlowFile() }
         assertThat(transferredFlowFiles, hasSize(equalTo(1)))
         assertThat(transferredFlowFiles[0], equalTo(flowFile))
@@ -91,7 +93,7 @@ class PutFlowToTCPTest {
 
         testRunner.run()
 
-        testRunner.assertAllFlowFilesTransferred(PutFlowToTCP.REL_SUCCESS, 1)
+        testRunner.assertAllFlowFilesTransferred(REL_SUCCESS, 1)
         val transferredFlowFiles = tcpServer.receivedBytes.values.map { it.toTestFlowFile() }
         assertThat(transferredFlowFiles, hasSize(equalTo(1)))
         assertThat(transferredFlowFiles[0], equalTo(flowFile))
@@ -108,11 +110,10 @@ class PutFlowToTCPTest {
 
         testRunner.run()
 
-        testRunner.assertAllFlowFilesTransferred(PutFlowToTCP.REL_FAILURE, 1)
+        testRunner.assertAllFlowFilesTransferred(REL_FAILURE, 1)
     }
 
     @Test
-    @Disabled
     fun `supports transfer of FlowFiles with large content`() {
         // the MockProcessSession used by the StandardProcessorTestRunner
         //   loads the content of every FlowFile into an ByteArray
@@ -133,7 +134,7 @@ class PutFlowToTCPTest {
 
         testRunner.run()
 
-        testRunner.assertAllFlowFilesTransferred(PutFlowToTCP.REL_SUCCESS, 1)
+        testRunner.assertAllFlowFilesTransferred(REL_SUCCESS, 1)
         testRunner.assertAllFlowFiles { flowFile ->
             assertThat(flowFile.size, equalTo(expectedByteLength))
         }
@@ -153,8 +154,8 @@ class PutFlowToTCPTest {
 
         testRunner.run(iterations)
 
-        testRunner.assertAllFlowFilesTransferred(PutFlowToTCP.REL_SUCCESS, iterations)
-        val flowFiles = testRunner.getFlowFilesForRelationship(PutFlowToTCP.REL_SUCCESS)
+        testRunner.assertAllFlowFilesTransferred(REL_SUCCESS, iterations)
+        val flowFiles = testRunner.getFlowFilesForRelationship(REL_SUCCESS)
         val actualIndices = flowFiles.map { it.attributes.getValue("index").toInt() }.toSet()
         assertThat(actualIndices, equalTo(expectedIndices))
     }
@@ -174,8 +175,8 @@ class PutFlowToTCPTest {
 
         testRunner.run(iterations)
 
-        testRunner.assertAllFlowFilesTransferred(PutFlowToTCP.REL_SUCCESS, iterations)
-        val flowFiles = testRunner.getFlowFilesForRelationship(PutFlowToTCP.REL_SUCCESS)
+        testRunner.assertAllFlowFilesTransferred(REL_SUCCESS, iterations)
+        val flowFiles = testRunner.getFlowFilesForRelationship(REL_SUCCESS)
         val actualIndices = flowFiles.map { it.attributes.getValue("index").toInt() }.toSet()
         assertThat(actualIndices, equalTo(expectedIndices))
     }
@@ -195,8 +196,8 @@ class PutFlowToTCPTest {
 
         testRunner.run(iterations)
 
-        testRunner.assertAllFlowFilesTransferred(PutFlowToTCP.REL_SUCCESS, iterations)
-        val flowFiles = testRunner.getFlowFilesForRelationship(PutFlowToTCP.REL_SUCCESS)
+        testRunner.assertAllFlowFilesTransferred(REL_SUCCESS, iterations)
+        val flowFiles = testRunner.getFlowFilesForRelationship(REL_SUCCESS)
         val actualIndices = flowFiles.map { it.attributes.getValue("index").toInt() }.toSet()
         assertThat(actualIndices, equalTo(expectedIndices))
     }
@@ -220,7 +221,7 @@ class PutFlowToTCPTest {
 
             testRunner.run()
 
-            testRunner.assertAllFlowFilesTransferred(PutFlowToTCP.REL_SUCCESS, 1)
+            testRunner.assertAllFlowFilesTransferred(REL_SUCCESS, 1)
             val transferredFlowFiles = tcpServer.receivedBytes.values.map { it.toTestFlowFile() }
             assertThat(transferredFlowFiles, hasSize(equalTo(1)))
             assertThat(transferredFlowFiles[0].attributes.keys, equalTo(setOf("foo", "other", "missing")))
@@ -242,7 +243,7 @@ class PutFlowToTCPTest {
 
             testRunner.run()
 
-            testRunner.assertAllFlowFilesTransferred(PutFlowToTCP.REL_SUCCESS, 1)
+            testRunner.assertAllFlowFilesTransferred(REL_SUCCESS, 1)
             val transferredFlowFiles = tcpServer.receivedBytes.values.map { it.toTestFlowFile() }
             assertThat(transferredFlowFiles, hasSize(equalTo(1)))
             assertThat(transferredFlowFiles[0].attributes.keys, equalTo(setOf("foo", "foooooooo")))
@@ -264,7 +265,7 @@ class PutFlowToTCPTest {
 
             testRunner.run()
 
-            testRunner.assertAllFlowFilesTransferred(PutFlowToTCP.REL_SUCCESS, 1)
+            testRunner.assertAllFlowFilesTransferred(REL_SUCCESS, 1)
             val transferredFlowFiles = tcpServer.receivedBytes.values.map { it.toTestFlowFile() }
             assertThat(transferredFlowFiles, hasSize(equalTo(1)))
             assertThat(transferredFlowFiles[0].attributes.keys, equalTo(setOf("bar", "foo")))
@@ -281,7 +282,7 @@ class PutFlowToTCPTest {
 
             testRunner.run()
 
-            testRunner.assertAllFlowFilesTransferred(PutFlowToTCP.REL_SUCCESS, 1)
+            testRunner.assertAllFlowFilesTransferred(REL_SUCCESS, 1)
             val transferredFlowFiles = tcpServer.receivedBytes.values.map { it.toTestFlowFile() }
             assertThat(transferredFlowFiles, hasSize(equalTo(1)))
             assertAll(transferredFlowFiles[0].attributes.keys.map { attributeKey ->
@@ -304,7 +305,7 @@ class PutFlowToTCPTest {
 
             testRunner.run()
 
-            testRunner.assertAllFlowFilesTransferred(PutFlowToTCP.REL_SUCCESS, 1)
+            testRunner.assertAllFlowFilesTransferred(REL_SUCCESS, 1)
             val transferredFlowFiles = tcpServer.receivedBytes.values.map { it.toTestFlowFile() }
             assertThat(transferredFlowFiles, hasSize(equalTo(1)))
             val attributeValues = transferredFlowFiles[0].attributes.values
@@ -324,7 +325,7 @@ class PutFlowToTCPTest {
 
             testRunner.run()
 
-            testRunner.assertAllFlowFilesTransferred(PutFlowToTCP.REL_SUCCESS, 1)
+            testRunner.assertAllFlowFilesTransferred(REL_SUCCESS, 1)
             val transferredFlowFiles = tcpServer.receivedBytes.values.map { it.toTestFlowFile() }
             val attributeValues = transferredFlowFiles[0].attributes.values
             assertThat(attributeValues.size, equalTo(1))

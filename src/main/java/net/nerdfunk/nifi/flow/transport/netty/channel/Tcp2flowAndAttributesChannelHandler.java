@@ -163,14 +163,16 @@ public class Tcp2flowAndAttributesChannelHandler extends SimpleChannelInboundHan
                     return;
                 }
 
+                // todo use putAllAttributes + dont add ip multiple times ..
                 for (String key : map.keySet()) {
-                    processSession.putAttribute(this.flowFile, key, String.valueOf(map.get(key)));
-                    // write IP address and port if user wants it
-                    if (this.addIpAndPort) {
-                        processSession.putAttribute(this.flowFile, "tcp.sender", this.receiverIpAddress);
-                        processSession.putAttribute(this.flowFile, "tcp.receiver", myIpAddress);
-                        processSession.putAttribute(this.flowFile, "tcp.receiver_port", Integer.toString(myPort));
-                    }
+                    this.flowFile = processSession.putAttribute(this.flowFile, key, String.valueOf(map.get(key)));
+                }
+
+                // write IP address and port if user wants it
+                if (this.addIpAndPort) {
+                    this.flowFile = processSession.putAttribute(this.flowFile, "tcp.sender", this.receiverIpAddress);
+                    this.flowFile = processSession.putAttribute(this.flowFile, "tcp.receiver", myIpAddress);
+                    this.flowFile = processSession.putAttribute(this.flowFile, "tcp.receiver_port", Integer.toString(myPort));
                 }
             }
             processSession.getProvenanceReporter().modifyContent(this.flowFile);

@@ -11,10 +11,8 @@ import org.apache.nifi.event.transport.EventServer
 import org.apache.nifi.event.transport.configuration.ShutdownQuietPeriod
 import org.apache.nifi.event.transport.configuration.ShutdownTimeout
 import org.apache.nifi.event.transport.configuration.TransportProtocol
-import org.apache.nifi.event.transport.message.ByteArrayMessage
 import org.apache.nifi.event.transport.netty.NettyEventServerFactory
 import org.apache.nifi.event.transport.netty.channel.LogExceptionChannelHandler
-import org.apache.nifi.event.transport.netty.codec.SocketByteArrayMessageDecoder
 import org.apache.nifi.mock.MockComponentLogger
 import java.net.InetAddress
 import java.nio.ByteOrder
@@ -23,9 +21,8 @@ import java.nio.ByteOrder
 class NettyTestTcpServer : TestTcpServer {
 
     private val receivedBytesMap = mutableMapOf<String, ByteArray>()
-    override val receivedBytes: Map<String, ByteArray> get() {
-        return receivedBytesMap
-    }
+    override val receivedBytes: Map<String, ByteArray>
+        get() = receivedBytesMap
 
     private var eventServer: EventServer? = null
 
@@ -37,10 +34,7 @@ class NettyTestTcpServer : TestTcpServer {
             setHandlerSupplier {
                 listOf<ChannelHandler>(
                     ByteArrayDecoder(),
-                    SocketByteArrayMessageDecoder(),
-                    InMemoryFlowMessageDecoder { id, bytes ->
-                        receivedBytesMap[id] = bytes.toByteArray()
-                    },
+                    InMemoryFlowMessageDecoder(receivedBytesMap),
                     LogExceptionChannelHandler(MockComponentLogger())
                 )
             }
@@ -61,14 +55,16 @@ class NettyTestTcpServer : TestTcpServer {
     }
 }
 
-class InMemoryFlowMessageDecoder(private val receiver: (id: String, bytes: List<Byte>) -> Unit) : SimpleChannelInboundHandler<ByteArrayMessage>() {
+class InMemoryFlowMessageDecoder(
+    private val receivedBytesMap: MutableMap<String, ByteArray>
+) : SimpleChannelInboundHandler<ByteArray>() {
 
     private var attributesLength: Int = -1
     private var contentLength: Long = -1
-    private var receivedBytes = listOf<Byte>()
+    private var receivedBytes: ByteArray = ByteArray(0)
 
-    override fun channelRead0(ctx: ChannelHandlerContext, msg: ByteArrayMessage) {
-        receivedBytes = receivedBytes + msg.message.toList()
+    override fun channelRead0(ctx: ChannelHandlerContext, msg: ByteArray) {
+        receivedBytes += msg
 
         if (attributesLength < 0 || contentLength < 0) {
             attributesLength = receivedBytes.take(4).toInt(byteOrder = ByteOrder.BIG_ENDIAN)
@@ -77,9 +73,9 @@ class InMemoryFlowMessageDecoder(private val receiver: (id: String, bytes: List<
 
         val expectedSize = attributesLength + contentLength.toInt() + 12
         if (receivedBytes.size >= expectedSize) {
-            receiver.invoke(ctx.channel().id().asLongText(), receivedBytes.take(expectedSize))
+            receivedBytesMap[ctx.channel().id().asLongText()] = receivedBytes.copyOfRange(0, expectedSize)
 
-            receivedBytes = receivedBytes.drop(expectedSize)
+            receivedBytes = receivedBytes.copyOfRange(expectedSize, receivedBytes.size)
             attributesLength = -1
             contentLength = -1
         }
