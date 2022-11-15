@@ -1,6 +1,5 @@
-package io.github.endzeitbegins.nifi.flowovertcp.testing.testrunner
+package io.github.endzeitbegins.nifi.flowovertcp.testing.flowfile
 
-import io.github.endzeitbegins.nifi.flowovertcp.testing.TestFlowFile
 import org.apache.nifi.util.TestRunner
 
 internal fun TestRunner.enqueue(flowFile: TestFlowFile) {

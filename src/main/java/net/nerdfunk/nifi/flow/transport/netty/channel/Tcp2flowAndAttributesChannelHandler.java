@@ -175,7 +175,8 @@ public class Tcp2flowAndAttributesChannelHandler extends SimpleChannelInboundHan
             }
             processSession.getProvenanceReporter().modifyContent(this.flowFile);
             processSession.transfer(this.flowFile, relationshipSuccess);
-            processSession.commit();
+//            processSession.commit(); // TODO
+            processSession.commitAsync(); // TODO was without async first ..
             this.processSession = null;
             this.haveActiveSession = false;
             logger.info("flowfile received successfully and transmitted to next processor");

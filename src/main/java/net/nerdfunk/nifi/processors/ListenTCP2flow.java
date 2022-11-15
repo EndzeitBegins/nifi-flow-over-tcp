@@ -107,6 +107,7 @@ public class ListenTCP2flow extends AbstractSessionFactoryProcessor {
             .Builder().name("Encoder")
             .description("The encoder.")
             .required(true)
+            .expressionLanguageSupported(ExpressionLanguageScope.NONE)
             .allowableValues(FLOW_AND_ATTRIBUTES, FLOW_ONLY)
             .defaultValue(FLOW_AND_ATTRIBUTES.getValue())
             .build();
@@ -117,6 +118,7 @@ public class ListenTCP2flow extends AbstractSessionFactoryProcessor {
                     + "the listening TCP port is added to the attributes.")
             .required(true)
             .defaultValue("false")
+            .expressionLanguageSupported(ExpressionLanguageScope.NONE)
             .allowableValues("true", "false")
             .build();
 
@@ -131,12 +133,12 @@ public class ListenTCP2flow extends AbstractSessionFactoryProcessor {
             ADD_IP_AND_PORT_TO_ATTRIBUTE
     ));
 
-    public static final Relationship RELATIONSHIP_SUCCESS = new Relationship.Builder()
+    public static final Relationship RELATIONSHIP_SUCCESS = new Relationship.Builder() // TODO rename to REL_SUCCESS
             .name("success")
             .description("Relationship for successfully received files.")
             .build();
 
-    public static final Relationship RELATIONSHIP_ERROR = new Relationship.Builder()
+    public static final Relationship RELATIONSHIP_ERROR = new Relationship.Builder()  // TODO rename to REL_FAILURE
             .name("error")
             .description("Relationship if an error occurred.")
             .build();
@@ -183,8 +185,10 @@ public class ListenTCP2flow extends AbstractSessionFactoryProcessor {
             int port = context.getProperty(PORT).evaluateAttributeExpressions().asInteger();
             int reader_idle_timeout = context.getProperty(READER_IDLE_TIME).evaluateAttributeExpressions().asInteger();
             SSLContextService sslContextService = context.getProperty(SSL_CONTEXT_SERVICE).asControllerService(SSLContextService.class);
-            final String configured_encoder = context.getProperty(ENCODER).evaluateAttributeExpressions().getValue();
-            final boolean writeIpAndPort = context.getProperty(ADD_IP_AND_PORT_TO_ATTRIBUTE).evaluateAttributeExpressions().asBoolean();
+//            final String configured_encoder = context.getProperty(ENCODER).evaluateAttributeExpressions().getValue();
+            final String configured_encoder = context.getProperty(ENCODER).getValue();
+//            final boolean writeIpAndPort = context.getProperty(ADD_IP_AND_PORT_TO_ATTRIBUTE).evaluateAttributeExpressions().asBoolean();
+            final boolean writeIpAndPort = context.getProperty(ADD_IP_AND_PORT_TO_ATTRIBUTE).asBoolean();
 
             ClientAuth clientAuth = ClientAuth.REQUIRED;
             final PropertyValue clientAuthProperty = context.getProperty(CLIENT_AUTH);

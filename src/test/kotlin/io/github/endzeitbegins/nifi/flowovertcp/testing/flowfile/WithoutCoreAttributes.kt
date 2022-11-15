@@ -1,4 +1,4 @@
-package io.github.endzeitbegins.nifi.flowovertcp.testing
+package io.github.endzeitbegins.nifi.flowovertcp.testing.flowfile
 
 import io.github.endzeitbegins.nifi.flowovertcp.internal.attributes.coreAttributes
 
