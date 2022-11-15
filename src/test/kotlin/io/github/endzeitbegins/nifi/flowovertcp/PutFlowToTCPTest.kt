@@ -4,12 +4,12 @@ import com.natpryce.hamkrest.assertion.assertThat
 import com.natpryce.hamkrest.equalTo
 import com.natpryce.hamkrest.hasElement
 import com.natpryce.hamkrest.hasSize
-import io.github.endzeitbegins.nifi.flowovertcp.testing.TestFlowFile
+import io.github.endzeitbegins.nifi.flowovertcp.testing.flowfile.TestFlowFile
 import io.github.endzeitbegins.nifi.flowovertcp.internal.attributes.coreAttributes
 import io.github.endzeitbegins.nifi.flowovertcp.testing.tcp.testTcpServer
-import io.github.endzeitbegins.nifi.flowovertcp.testing.testrunner.enqueue
+import io.github.endzeitbegins.nifi.flowovertcp.testing.flowfile.enqueue
 import io.github.endzeitbegins.nifi.flowovertcp.testing.testrunner.newTestRunner
-import io.github.endzeitbegins.nifi.flowovertcp.testing.toTestFlowFile
+import io.github.endzeitbegins.nifi.flowovertcp.testing.flowfile.toTestFlowFile
 import org.junit.jupiter.api.*
 import java.io.InputStream
 import kotlin.random.Random
@@ -112,6 +112,7 @@ class PutFlowToTCPTest {
     }
 
     @Test
+    @Disabled
     fun `supports transfer of FlowFiles with large content`() {
         // the MockProcessSession used by the StandardProcessorTestRunner
         //   loads the content of every FlowFile into an ByteArray
