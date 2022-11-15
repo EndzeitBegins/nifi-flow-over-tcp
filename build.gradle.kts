@@ -28,9 +28,15 @@ dependencies {
     implementation("org.apache.nifi:nifi-utils:$niFiVersion")
     // former nifi-processor-utils - see https://issues.apache.org/jira/browse/NIFI-9610
     implementation("org.apache.nifi:nifi-event-listen:$niFiVersion")
-    implementation("org.apache.nifi:nifi-listed-entity:$niFiVersion")
+    implementation("org.apache.nifi:nifi-event-put:$niFiVersion")
     // - NAR dependencies
     implementation("org.apache.nifi:nifi-standard-services-api-nar:$niFiVersion")
+
+    // JSON (de)serialization
+    val jacksonVersion = "2.14.0"
+    implementation("com.fasterxml.jackson.core:jackson-core:$jacksonVersion")
+    implementation("com.fasterxml.jackson.core:jackson-databind:$jacksonVersion")
+    implementation("com.fasterxml.jackson.module:jackson-module-kotlin:$jacksonVersion")
 
     // utility libraries
     implementation("commons-net:commons-net:3.8.0")
@@ -40,7 +46,6 @@ dependencies {
     testImplementation("com.natpryce:hamkrest:1.8.0.1")
     testImplementation("org.apache.nifi:nifi-mock:$niFiVersion")
     testImplementation("org.slf4j:slf4j-simple:2.0.3")
-    testImplementation("com.fasterxml.jackson.module:jackson-module-kotlin:2.14.0")
     testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.6.4")
 }
 

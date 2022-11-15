@@ -6,7 +6,6 @@ import io.github.endzeitbegins.nifi.flowovertcp.internal.attributes.or
 import io.github.endzeitbegins.nifi.flowovertcp.internal.put.*
 import io.github.endzeitbegins.nifi.flowovertcp.internal.transmission.send.FlowSender
 import io.github.endzeitbegins.nifi.flowovertcp.internal.transmission.send.createFlowSender
-import net.nerdfunk.nifi.processors.ListenTCP2flow
 import org.apache.nifi.annotation.behavior.InputRequirement
 import org.apache.nifi.annotation.documentation.CapabilityDescription
 import org.apache.nifi.annotation.documentation.SeeAlso
@@ -21,6 +20,7 @@ import org.apache.nifi.processor.ProcessContext
 import org.apache.nifi.processor.ProcessSession
 import org.apache.nifi.processor.Relationship
 import org.apache.nifi.processor.util.StandardValidators
+import org.apache.nifi.processor.util.put.AbstractPutEventProcessor
 import org.apache.nifi.ssl.SSLContextService
 import kotlin.system.measureTimeMillis
 
@@ -32,31 +32,11 @@ import kotlin.system.measureTimeMillis
         |so that multiple FlowFiles are transmitted using the same TCP connection."""
 )
 @InputRequirement(InputRequirement.Requirement.INPUT_REQUIRED)
-@SeeAlso(ListenTCP2flow::class)
-@Tags("remote", "egress", "put", "tcp", "flow", "content    ", "attribute")
+@SeeAlso(ListenFlowFromTCP::class)
+@Tags("put", "tcp", "egress", "flow", "content", "attribute", "diode", "tls", "ssl")
 public class PutFlowToTCP : AbstractProcessor() {
 
     public companion object {
-
-        public val HOSTNAME: PropertyDescriptor = PropertyDescriptor.Builder()
-            .name("hostname")
-            .displayName("Hostname")
-            .description("The ip address or hostname of the destination.")
-            .addValidator(StandardValidators.NON_EMPTY_VALIDATOR)
-            .defaultValue("localhost")
-            .required(true)
-            .expressionLanguageSupported(ExpressionLanguageScope.VARIABLE_REGISTRY)
-            .build()
-
-        public val PORT: PropertyDescriptor = PropertyDescriptor.Builder()
-            .name("port")
-            .displayName("Port")
-            .description("The port on the destination.")
-            .required(true)
-            .addValidator(StandardValidators.PORT_VALIDATOR)
-            .expressionLanguageSupported(ExpressionLanguageScope.VARIABLE_REGISTRY)
-            .build()
-
         private const val attributesListName = "Attributes List"
         private const val attributesRegexName = "Attributes Regular Expression"
         private const val nullForMissingAttributeName = """Use null for missing attributes"""
@@ -132,37 +112,6 @@ public class PutFlowToTCP : AbstractProcessor() {
             .allowableValues("true", "false")
             .build()
 
-        public val MAX_SOCKET_SEND_BUFFER_SIZE: PropertyDescriptor = PropertyDescriptor.Builder()
-            .name("Max Size of Socket Send Buffer")
-            .description(
-                "The maximum size of the socket send buffer that should be used. This is a suggestion to the Operating System " +
-                        "to indicate how big the socket buffer should be. If this value is set too low, the buffer may fill up before " +
-                        "the data can be read, and incoming data will be dropped."
-            )
-            .addValidator(StandardValidators.DATA_SIZE_VALIDATOR)
-            .defaultValue("1 MB")
-            .required(true)
-            .build()
-
-        public val TIMEOUT: PropertyDescriptor = PropertyDescriptor.Builder()
-            .name("Timeout")
-            .description("The timeout for connecting to and communicating with the destination")
-            .required(false)
-            .defaultValue("10 seconds")
-            .addValidator(StandardValidators.TIME_PERIOD_VALIDATOR)
-            .expressionLanguageSupported(ExpressionLanguageScope.VARIABLE_REGISTRY)
-            .build()
-
-        public val SSL_CONTEXT_SERVICE: PropertyDescriptor = PropertyDescriptor.Builder()
-            .name("SSL Context Service")
-            .description(
-                "The Controller Service to use in order to obtain an SSL Context. If this property is set, " +
-                        "messages will be sent over a secure connection."
-            )
-            .required(false)
-            .identifiesControllerService(SSLContextService::class.java)
-            .build()
-
         public val REL_SUCCESS: Relationship = Relationship.Builder()
             .name("success")
             .description("FlowFiles that are sent successfully to the destination are sent out this relationship.")
@@ -177,8 +126,8 @@ public class PutFlowToTCP : AbstractProcessor() {
     private val relationships: Set<Relationship> = setOf(REL_SUCCESS, REL_FAILURE)
 
     private val descriptors: List<PropertyDescriptor> = listOf(
-        HOSTNAME,
-        PORT,
+        AbstractPutEventProcessor.HOSTNAME,
+        AbstractPutEventProcessor.PORT,
 
         INCLUDE_CORE_ATTRIBUTES,
         ATTRIBUTES_LIST,
@@ -187,9 +136,9 @@ public class PutFlowToTCP : AbstractProcessor() {
 
         CONNECTION_PER_FLOWFILE,
 
-        MAX_SOCKET_SEND_BUFFER_SIZE,
-        TIMEOUT,
-        SSL_CONTEXT_SERVICE,
+        AbstractPutEventProcessor.MAX_SOCKET_SEND_BUFFER_SIZE,
+        AbstractPutEventProcessor.TIMEOUT,
+        AbstractPutEventProcessor.SSL_CONTEXT_SERVICE,
     )
 
     override fun getRelationships(): Set<Relationship> = relationships
