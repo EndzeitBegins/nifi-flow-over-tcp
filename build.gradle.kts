@@ -41,6 +41,7 @@ dependencies {
     testImplementation("org.apache.nifi:nifi-mock:$niFiVersion")
     testImplementation("org.slf4j:slf4j-simple:2.0.3")
     testImplementation("com.fasterxml.jackson.module:jackson-module-kotlin:2.14.0")
+    testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.6.4")
 }
 
 signing {
