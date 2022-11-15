@@ -4,16 +4,17 @@ import io.github.endzeitbegins.nifi.flowovertcp.PutFlowToTCP
 import org.apache.nifi.flowfile.FlowFile
 import org.apache.nifi.processor.DataUnit
 import org.apache.nifi.processor.ProcessContext
+import org.apache.nifi.processor.util.put.AbstractPutEventProcessor
 import org.apache.nifi.ssl.SSLContextService
 import java.time.Duration
 import java.util.concurrent.TimeUnit
 import java.util.regex.Pattern
 
 internal val ProcessContext.hostname: String
-    get() = getProperty(PutFlowToTCP.HOSTNAME).evaluateAttributeExpressions().value
+    get() = getProperty(AbstractPutEventProcessor.HOSTNAME).evaluateAttributeExpressions().value
 
 internal val ProcessContext.port: Int
-    get() = getProperty(PutFlowToTCP.PORT).evaluateAttributeExpressions().asInteger()
+    get() = getProperty(AbstractPutEventProcessor.PORT).evaluateAttributeExpressions().asInteger()
 
 internal fun ProcessContext.attributesToIncludeRegexOrNull(flowFile: FlowFile): Regex? {
     val property = getProperty(PutFlowToTCP.ATTRIBUTES_REGEX)
@@ -42,7 +43,7 @@ internal val ProcessContext.missingAttributeValue: String?
 
 internal val ProcessContext.sslContextService: SSLContextService?
     get() {
-        val property = getProperty(PutFlowToTCP.SSL_CONTEXT_SERVICE)
+        val property = getProperty(AbstractPutEventProcessor.SSL_CONTEXT_SERVICE)
 
         return if (property.isSet) {
             property.asControllerService(SSLContextService::class.java)
@@ -54,7 +55,7 @@ internal val ProcessContext.separateConnectionPerFlowFile: Boolean
 
 internal val ProcessContext.timeout: Duration
     get() = Duration.ofMillis(
-        getProperty(PutFlowToTCP.TIMEOUT).evaluateAttributeExpressions().asTimePeriod(TimeUnit.MILLISECONDS)
+        getProperty(AbstractPutEventProcessor.TIMEOUT).evaluateAttributeExpressions().asTimePeriod(TimeUnit.MILLISECONDS)
     )
 internal val ProcessContext.maxSocketSendBufferSize: Int
-    get() = getProperty(PutFlowToTCP.MAX_SOCKET_SEND_BUFFER_SIZE).asDataSize(DataUnit.B).toInt()
+    get() = getProperty(AbstractPutEventProcessor.MAX_SOCKET_SEND_BUFFER_SIZE).asDataSize(DataUnit.B).toInt()

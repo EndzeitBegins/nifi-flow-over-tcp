@@ -2,20 +2,18 @@ package net.nerdfunk.nifi.flow.transport.netty;
 
 import io.netty.bootstrap.AbstractBootstrap;
 import io.netty.bootstrap.ServerBootstrap;
-import io.netty.channel.ChannelFuture;
-import io.netty.channel.ChannelHandler;
-import io.netty.channel.ChannelOption;
-import io.netty.channel.EventLoopGroup;
-import io.netty.channel.FixedRecvByteBufAllocator;
+import io.netty.channel.*;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
 import net.nerdfunk.nifi.flow.transport.FlowException;
 import net.nerdfunk.nifi.flow.transport.FlowServer;
 import net.nerdfunk.nifi.flow.transport.FlowServerFactory;
-import net.nerdfunk.nifi.flow.transport.netty.channel.ssl.ServerSslHandlerChannelInitializer;
 import net.nerdfunk.nifi.flow.transport.netty.channel.StandardChannelInitializer;
+import net.nerdfunk.nifi.flow.transport.netty.channel.ssl.ServerSslHandlerChannelInitializer;
 import org.apache.nifi.security.util.ClientAuth;
+import org.jetbrains.annotations.Nullable;
 
 import javax.net.ssl.SSLContext;
+import java.net.InetAddress;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
@@ -25,14 +23,15 @@ import java.util.function.Supplier;
  * Netty Flow Server Factory
  */
 public class NettyFlowServerFactory extends FlowLoopGroupFactory implements FlowServerFactory {
-    private final String address;
+    @Nullable
+    private final InetAddress address;
     private final int port;
     private Supplier<List<ChannelHandler>> handlerSupplier = () -> Collections.emptyList();
     private Integer socketReceiveBuffer;
     private SSLContext sslContext;
     private ClientAuth clientAuth = ClientAuth.NONE;
 
-    public NettyFlowServerFactory(final String address, final int port) {
+    public NettyFlowServerFactory(@Nullable final InetAddress address, final int port) {
         this.address = address;
         this.port = port;
     }

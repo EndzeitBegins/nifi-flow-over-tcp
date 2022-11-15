@@ -1,25 +1,26 @@
 package net.nerdfunk.nifi.flow.transport.netty.channel;
 
-import net.nerdfunk.nifi.flow.transport.message.FlowMessage;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.SimpleChannelInboundHandler;
+import net.nerdfunk.nifi.flow.transport.message.FlowMessage;
+import net.nerdfunk.nifi.flow.transport.tcp2flow.Tcp2flowConfiguration;
+import org.apache.commons.net.util.SubnetUtils;
+import org.apache.nifi.flowfile.FlowFile;
+import org.apache.nifi.logging.ComponentLog;
+import org.apache.nifi.processor.ProcessSession;
+import org.apache.nifi.processor.ProcessSessionFactory;
+import org.apache.nifi.processor.Relationship;
+
 import java.io.IOException;
 import java.io.OutputStream;
+import java.net.InetSocketAddress;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicReference;
-import java.net.InetSocketAddress;
-import net.nerdfunk.nifi.flow.transport.tcp2flow.Tcp2flowConfiguration;
-import org.apache.nifi.flowfile.FlowFile;
-import org.apache.nifi.logging.ComponentLog;
-import org.apache.nifi.processor.ProcessSession;
-import org.apache.nifi.processor.ProcessSessionFactory;
-import org.apache.nifi.processor.Relationship;
-import org.apache.commons.net.util.SubnetUtils;
 
 public class Tcp2flowAndAttributesChannelHandler extends SimpleChannelInboundHandler<FlowMessage> {
 
@@ -51,7 +52,7 @@ public class Tcp2flowAndAttributesChannelHandler extends SimpleChannelInboundHan
         this.processSession = null;
         this.flowFile = null;
         this.ipfilterlist = tcp2flowconfiguration.getIpFilterlist();
-        this.myIpAddress = tcp2flowconfiguration.getBindAddressAsString();
+        this.myIpAddress = tcp2flowconfiguration.getBindAddress() == null ? "127.0.0.1" : tcp2flowconfiguration.getBindAddress().getHostAddress();
         this.myPort = tcp2flowconfiguration.getPort();
         this.addIpAndPort = tcp2flowconfiguration.getAddIpAndPort();
         this.receiverIpAddress = "";

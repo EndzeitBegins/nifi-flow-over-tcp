@@ -13,13 +13,12 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.joinAll
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
-import net.nerdfunk.nifi.processors.ListenTCP2flow
-import net.nerdfunk.nifi.processors.ListenTCP2flow.RELATIONSHIP_SUCCESS
+import io.github.endzeitbegins.nifi.flowovertcp.ListenFlowFromTCP.Companion.REL_SUCCESS
+import org.apache.nifi.processor.util.listen.ListenerProperties
 import org.apache.nifi.remote.io.socket.NetworkUtils
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertAll
 import java.nio.ByteOrder
-import java.util.*
 import kotlin.random.Random
 
 
@@ -28,12 +27,11 @@ class ListenFlowFromTCPTest {
     private val hostname = "127.0.0.1"
     private val port = NetworkUtils.availablePort()
 
-    private val testRunner = newTestRunner<ListenTCP2flow> {
-        setProperty(ListenTCP2flow.PORT, "$port")
+    private val testRunner = newTestRunner<ListenFlowFromTCP> {
+        setProperty(ListenerProperties.PORT, "$port")
     }
 
     private val tcpClient = testTcpClient(hostname, port)
-
     @Test
     fun `supports transfer of FlowFiles with no attributes and empty content`() {
         val flowFile = TestFlowFile(
@@ -86,8 +84,8 @@ class ListenFlowFromTCPTest {
 
         runWith(flowFile)
 
-        testRunner.assertAllFlowFilesTransferred(RELATIONSHIP_SUCCESS, 1)
-        val receivedFlowFile = testRunner.getFlowFilesForRelationship(RELATIONSHIP_SUCCESS).single().toTestFlowFile()
+        testRunner.assertAllFlowFilesTransferred(REL_SUCCESS, 1)
+        val receivedFlowFile = testRunner.getFlowFilesForRelationship(REL_SUCCESS).single().toTestFlowFile()
         assertThat(receivedFlowFile.attributes.filterKeys { key -> key != "uuid" }, equalTo(overridableCoreAttributes))
     }
 
@@ -97,12 +95,12 @@ class ListenFlowFromTCPTest {
             attributes = emptyMap(),
             content = emptyList(),
         )
-        testRunner.setProperty(ListenTCP2flow.ADD_IP_AND_PORT_TO_ATTRIBUTE, "true")
+        testRunner.setProperty(ListenFlowFromTCP.ADD_IP_AND_PORT_TO_ATTRIBUTE, "true")
 
         runWith(flowFile)
 
-        testRunner.assertAllFlowFilesTransferred(RELATIONSHIP_SUCCESS, 1)
-        val receivedFlowFile = testRunner.getFlowFilesForRelationship(RELATIONSHIP_SUCCESS)
+        testRunner.assertAllFlowFilesTransferred(REL_SUCCESS, 1)
+        val receivedFlowFile = testRunner.getFlowFilesForRelationship(REL_SUCCESS)
             .single().toTestFlowFile().withoutCoreAttributes()
         assertThat(receivedFlowFile.attributes, equalTo(mapOf(
             "tcp.sender" to "127.0.0.1",
@@ -128,8 +126,8 @@ class ListenFlowFromTCPTest {
         tcpClient.send(payload)
         testRunner.run(1, false, false)
 
-        testRunner.assertAllFlowFilesTransferred(RELATIONSHIP_SUCCESS, 1)
-        val flowFile = testRunner.getFlowFilesForRelationship(RELATIONSHIP_SUCCESS).single()
+        testRunner.assertAllFlowFilesTransferred(REL_SUCCESS, 1)
+        val flowFile = testRunner.getFlowFilesForRelationship(REL_SUCCESS).single()
         assertThat(flowFile.size, equalTo(expectedByteLength.toLong()))
     }
 
@@ -201,11 +199,11 @@ class ListenFlowFromTCPTest {
     }
 
     private fun `assertThat FlowFiles were received`(vararg flowFiles: TestFlowFile) {
-        testRunner.assertAllFlowFilesTransferred(RELATIONSHIP_SUCCESS, flowFiles.size)
+        testRunner.assertAllFlowFilesTransferred(REL_SUCCESS, flowFiles.size)
 
         val expectedFlowFiles = flowFiles
             .map { flowFile -> flowFile.withoutCoreAttributes() }
-        val receivedFlowFiles = testRunner.getFlowFilesForRelationship(RELATIONSHIP_SUCCESS)
+        val receivedFlowFiles = testRunner.getFlowFilesForRelationship(REL_SUCCESS)
             .map { mockFlowFile -> mockFlowFile.toTestFlowFile().withoutCoreAttributes() }
 
         assertAll(expectedFlowFiles.map { expectedFlowFile ->

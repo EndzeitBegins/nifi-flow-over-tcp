@@ -1,12 +1,13 @@
 package net.nerdfunk.nifi.flow.transport.tcp2flow;
 
-import java.util.Objects;
-import org.apache.nifi.processor.exception.ProcessException;
-import java.net.UnknownHostException;
-import javax.net.ssl.SSLContext;
 import net.nerdfunk.nifi.flow.transport.FlowServer;
+import org.apache.nifi.processor.exception.ProcessException;
 import org.apache.nifi.security.util.ClientAuth;
 import org.apache.nifi.ssl.SSLContextService;
+
+import javax.net.ssl.SSLContext;
+import java.net.UnknownHostException;
+import java.util.Objects;
 
 public class Tcp2flow {
 

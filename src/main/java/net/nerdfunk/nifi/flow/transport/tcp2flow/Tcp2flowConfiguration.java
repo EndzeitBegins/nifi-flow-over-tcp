@@ -1,23 +1,23 @@
 package net.nerdfunk.nifi.flow.transport.tcp2flow;
 
-import java.net.InetAddress;
-import java.net.UnknownHostException;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.atomic.AtomicReference;
 import org.apache.nifi.logging.ComponentLog;
 import org.apache.nifi.processor.ProcessSessionFactory;
 import org.apache.nifi.processor.Relationship;
 import org.apache.nifi.ssl.SSLContextService;
+import org.jetbrains.annotations.Nullable;
+
+import java.net.InetAddress;
+import java.net.UnknownHostException;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.atomic.AtomicReference;
 
 public class Tcp2flowConfiguration {
 
     private final InetAddress bindAddress;
-    private final String bindAddress_asString;
     private final int port;
     private final int reader_idle_timeout;
     private final String ipfilterlist;
     private final SSLContextService sslContextService;
-    private final String encoder;
     private final boolean addIpAndPort;
     private final Relationship relationship_success;
     private final Relationship relationship_error;
@@ -34,31 +34,28 @@ public class Tcp2flowConfiguration {
      * @param reader_idle_timeout Timeout
      * @param ipfilterlist IP filter list
      * @param sslContextService sslContextService
-     * @param encoder Which encoder to use
      * @param relationship_success Relationship Success
      * @param relationship_error Relationship Error
      * @param logger Logger
      * @throws UnknownHostException UnknownHostException
      */
     public Tcp2flowConfiguration(
-            String bindAddress,
+            @Nullable
+            InetAddress bindAddress,
             int port,
             int reader_idle_timeout,
             String ipfilterlist,
             SSLContextService sslContextService,
-            String encoder,
             boolean addIpAndPort,
             Relationship relationship_success,
             Relationship relationship_error,
             ComponentLog logger) throws UnknownHostException {
 
-        this.bindAddress = InetAddress.getByName(bindAddress);
-        this.bindAddress_asString = bindAddress;
+        this.bindAddress = bindAddress;
         this.port = port;
         this.reader_idle_timeout = reader_idle_timeout;
         this.ipfilterlist = ipfilterlist;
         this.sslContextService = sslContextService;
-        this.encoder = encoder;
         this.addIpAndPort = addIpAndPort;
         this.relationship_success = relationship_success;
         this.relationship_error = relationship_error;
@@ -141,14 +138,6 @@ public class Tcp2flowConfiguration {
         return bindAddress;
     }
 
-    /**
-     * returns the bind Address as string
-     *
-     * @return String
-     */
-    public String getBindAddressAsString() {
-        return bindAddress_asString;
-    }
     
     /**
      * returns the TCP Port
@@ -194,14 +183,6 @@ public class Tcp2flowConfiguration {
         return logger;
     }
 
-    /**
-     * returns the Encoder
-     *
-     * @return integer
-     */
-    public String getEncoder() {
-        return encoder;
-    }
 
     /**
      * returns the addIpAndPort

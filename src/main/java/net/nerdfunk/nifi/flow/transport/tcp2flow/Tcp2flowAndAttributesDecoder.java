@@ -1,11 +1,13 @@
 package net.nerdfunk.nifi.flow.transport.tcp2flow;
 
-import net.nerdfunk.nifi.flow.transport.message.FlowMessage;
-import io.netty.handler.codec.ByteToMessageDecoder;
-import io.netty.channel.ChannelHandlerContext;
 import io.netty.buffer.ByteBuf;
-import java.util.List;
+import io.netty.channel.ChannelHandlerContext;
+import io.netty.handler.codec.ByteToMessageDecoder;
+import net.nerdfunk.nifi.flow.transport.message.FlowMessage;
 import org.apache.nifi.logging.ComponentLog;
+
+import java.util.List;
+
 import static java.lang.Math.toIntExact;
 
 public class Tcp2flowAndAttributesDecoder extends ByteToMessageDecoder {

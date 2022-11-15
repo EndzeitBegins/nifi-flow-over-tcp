@@ -12,6 +12,7 @@ import io.github.endzeitbegins.nifi.flowovertcp.testing.tcp.testTcpServer
 import io.github.endzeitbegins.nifi.flowovertcp.testing.flowfile.enqueue
 import io.github.endzeitbegins.nifi.flowovertcp.testing.testrunner.newTestRunner
 import io.github.endzeitbegins.nifi.flowovertcp.testing.flowfile.toTestFlowFile
+import org.apache.nifi.processor.util.put.AbstractPutEventProcessor
 import org.junit.jupiter.api.*
 import java.io.InputStream
 import kotlin.random.Random
@@ -40,7 +41,7 @@ class PutFlowToTCPTest {
         testRunner.setClustered(false)
 
         testRunner.setProperty(PutFlowToTCP.INCLUDE_CORE_ATTRIBUTES, "false")
-        testRunner.setProperty(PutFlowToTCP.PORT, "$port")
+        testRunner.setProperty(AbstractPutEventProcessor.PORT, "$port")
     }
 
     @AfterAll
@@ -105,7 +106,7 @@ class PutFlowToTCPTest {
             attributes = mapOf("foo" to "bar"),
             content = "Hello failing test!".toByteArray().asList()
         )
-        testRunner.setProperty(PutFlowToTCP.PORT, "${port + 42}")
+        testRunner.setProperty(AbstractPutEventProcessor.PORT, "${port + 42}")
         testRunner.enqueue(flowFile)
 
         testRunner.run()
