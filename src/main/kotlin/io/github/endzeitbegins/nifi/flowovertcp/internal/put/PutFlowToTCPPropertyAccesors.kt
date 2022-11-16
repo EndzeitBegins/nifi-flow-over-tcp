@@ -10,12 +10,6 @@ import java.time.Duration
 import java.util.concurrent.TimeUnit
 import java.util.regex.Pattern
 
-internal val ProcessContext.hostname: String
-    get() = getProperty(AbstractPutEventProcessor.HOSTNAME).evaluateAttributeExpressions().value
-
-internal val ProcessContext.port: Int
-    get() = getProperty(AbstractPutEventProcessor.PORT).evaluateAttributeExpressions().asInteger()
-
 internal fun ProcessContext.attributesToIncludeRegexOrNull(flowFile: FlowFile): Regex? {
     val property = getProperty(PutFlowToTCP.ATTRIBUTES_REGEX)
 
@@ -40,22 +34,3 @@ internal val ProcessContext.includeCoreAttributes: Boolean
 
 internal val ProcessContext.missingAttributeValue: String?
     get() = if (getProperty(PutFlowToTCP.NULL_VALUE_FOR_EMPTY_STRING).asBoolean()) null else ""
-
-internal val ProcessContext.sslContextService: SSLContextService?
-    get() {
-        val property = getProperty(AbstractPutEventProcessor.SSL_CONTEXT_SERVICE)
-
-        return if (property.isSet) {
-            property.asControllerService(SSLContextService::class.java)
-        } else null
-    }
-
-internal val ProcessContext.separateConnectionPerFlowFile: Boolean
-    get() = getProperty(PutFlowToTCP.CONNECTION_PER_FLOWFILE).asBoolean()
-
-internal val ProcessContext.timeout: Duration
-    get() = Duration.ofMillis(
-        getProperty(AbstractPutEventProcessor.TIMEOUT).evaluateAttributeExpressions().asTimePeriod(TimeUnit.MILLISECONDS)
-    )
-internal val ProcessContext.maxSocketSendBufferSize: Int
-    get() = getProperty(AbstractPutEventProcessor.MAX_SOCKET_SEND_BUFFER_SIZE).asDataSize(DataUnit.B).toInt()

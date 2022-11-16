@@ -1,14 +1,8 @@
 package io.github.endzeitbegins.nifi.flowovertcp.testing.flowfile
 
 import com.fasterxml.jackson.databind.ObjectMapper
-import java.nio.ByteBuffer
+import io.github.endzeitbegins.nifi.flowovertcp.internal.codec.send.toByteRepresentation
 import java.nio.ByteOrder
-
-internal fun Int.toByteRepresentation(byteOrder: ByteOrder): ByteArray =
-    ByteBuffer.allocate(Int.SIZE_BYTES).order(byteOrder).putInt(this).array()
-
-internal fun Long.toByteRepresentation(byteOrder: ByteOrder): ByteArray =
-    ByteBuffer.allocate(Long.SIZE_BYTES).order(byteOrder).putLong(this).array()
 
 private val objectMapper = ObjectMapper()
 

@@ -14,6 +14,7 @@ import kotlinx.coroutines.joinAll
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import io.github.endzeitbegins.nifi.flowovertcp.ListenFlowFromTCP.Companion.REL_SUCCESS
+import io.github.endzeitbegins.nifi.flowovertcp.internal.codec.send.toByteRepresentation
 import org.apache.nifi.processor.util.listen.ListenerProperties
 import org.apache.nifi.remote.io.socket.NetworkUtils
 import org.junit.jupiter.api.Test
