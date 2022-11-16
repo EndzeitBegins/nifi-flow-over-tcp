@@ -3,6 +3,8 @@ package io.github.endzeitbegins.nifi.flowovertcp
 import net.nerdfunk.nifi.flow.transport.tcp2flow.Tcp2flow
 import net.nerdfunk.nifi.flow.transport.tcp2flow.Tcp2flowConfiguration
 import org.apache.nifi.annotation.behavior.InputRequirement
+import org.apache.nifi.annotation.behavior.WritesAttribute
+import org.apache.nifi.annotation.behavior.WritesAttributes
 import org.apache.nifi.annotation.documentation.CapabilityDescription
 import org.apache.nifi.annotation.documentation.SeeAlso
 import org.apache.nifi.annotation.documentation.Tags
@@ -16,6 +18,7 @@ import org.apache.nifi.processor.ProcessSessionFactory
 import org.apache.nifi.processor.Relationship
 import org.apache.nifi.processor.exception.ProcessException
 import org.apache.nifi.processor.util.StandardValidators
+import org.apache.nifi.processor.util.listen.AbstractListenEventProcessor
 import org.apache.nifi.processor.util.listen.ListenerProperties
 import org.apache.nifi.remote.io.socket.NetworkUtils
 import org.apache.nifi.security.util.ClientAuth
@@ -23,14 +26,20 @@ import org.apache.nifi.ssl.RestrictedSSLContextService
 import org.apache.nifi.ssl.SSLContextService
 import java.net.InetAddress
 import java.net.UnknownHostException
-import java.util.*
+
+private const val addIpAndPortAttributesName = "Add IP and port"
 
 @CapabilityDescription(
     """The ListenFlowFromTCP processor listens for incoming TCP connections and creates FlowFiles from each connection. 
-        |When using the PutFlowToTCP processor, the TCP stream contains the attributes and content of the original FlowFile. 
-        |These attributes and the content is written to a new FlowFile."""
+        When using the PutFlowToTCP processor, the TCP stream contains the attributes and content of the original FlowFile. 
+        These attributes and the content is written to a new FlowFile."""
 )
 @InputRequirement(InputRequirement.Requirement.INPUT_FORBIDDEN)
+@WritesAttributes(
+    WritesAttribute(attribute = "tcp.sender", description = """IP address of the sending host. Attribute is only written, when "$addIpAndPortAttributesName" is enabled."""),
+    WritesAttribute(attribute = "tcp.receiver", description = """IP address of the target host. Attribute is only written, when "$addIpAndPortAttributesName" is enabled."""),
+    WritesAttribute(attribute = "tcp.receiver_port", description = """Port on the target host. Attribute is only written, when "$addIpAndPortAttributesName" is enabled."""),
+)
 @SeeAlso(PutFlowToTCP::class)
 @Tags("listen", "tcp", "ingress", "flow", "content", "attribute", "diode", "tls", "ssl")
 public class ListenFlowFromTCP : AbstractSessionFactoryProcessor() {
@@ -79,7 +88,8 @@ public class ListenFlowFromTCP : AbstractSessionFactoryProcessor() {
             .build()
 
         public val ADD_IP_AND_PORT_TO_ATTRIBUTE: PropertyDescriptor = PropertyDescriptor.Builder()
-            .name("Add IP and port")
+            .name("add-attributes-ip-port")
+            .displayName(addIpAndPortAttributesName)
             .description(
                 """If set to true the listening IP address, the sender IP address and the listening TCP port are added to the attributes."""
             )
@@ -100,7 +110,7 @@ public class ListenFlowFromTCP : AbstractSessionFactoryProcessor() {
             .build()
     }
 
-    private val relationships: Set<Relationship> = setOf(REL_SUCCESS, REL_FAILURE)
+    private val relationships: Set<Relationship> = setOf(AbstractListenEventProcessor.REL_SUCCESS, REL_FAILURE)
 
     private val descriptors: List<PropertyDescriptor> = listOf(
         ListenerProperties.NETWORK_INTF_NAME,

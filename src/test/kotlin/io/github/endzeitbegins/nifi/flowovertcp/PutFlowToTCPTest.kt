@@ -4,15 +4,15 @@ import com.natpryce.hamkrest.assertion.assertThat
 import com.natpryce.hamkrest.equalTo
 import com.natpryce.hamkrest.hasElement
 import com.natpryce.hamkrest.hasSize
-import io.github.endzeitbegins.nifi.flowovertcp.PutFlowToTCP.Companion.REL_FAILURE
-import io.github.endzeitbegins.nifi.flowovertcp.PutFlowToTCP.Companion.REL_SUCCESS
-import io.github.endzeitbegins.nifi.flowovertcp.testing.flowfile.TestFlowFile
 import io.github.endzeitbegins.nifi.flowovertcp.internal.attributes.coreAttributes
-import io.github.endzeitbegins.nifi.flowovertcp.testing.tcp.testTcpServer
+import io.github.endzeitbegins.nifi.flowovertcp.testing.flowfile.TestFlowFile
 import io.github.endzeitbegins.nifi.flowovertcp.testing.flowfile.enqueue
-import io.github.endzeitbegins.nifi.flowovertcp.testing.testrunner.newTestRunner
 import io.github.endzeitbegins.nifi.flowovertcp.testing.flowfile.toTestFlowFile
+import io.github.endzeitbegins.nifi.flowovertcp.testing.tcp.testTcpServer
+import io.github.endzeitbegins.nifi.flowovertcp.testing.testrunner.newTestRunner
 import org.apache.nifi.processor.util.put.AbstractPutEventProcessor
+import org.apache.nifi.processor.util.put.AbstractPutEventProcessor.REL_FAILURE
+import org.apache.nifi.processor.util.put.AbstractPutEventProcessor.REL_SUCCESS
 import org.junit.jupiter.api.*
 import java.io.InputStream
 import kotlin.random.Random
@@ -194,6 +194,27 @@ class PutFlowToTCPTest {
             testRunner.enqueue(flowFile)
         }
         testRunner.setClustered(true)
+
+        testRunner.run(iterations)
+
+        testRunner.assertAllFlowFilesTransferred(REL_SUCCESS, iterations)
+        val flowFiles = testRunner.getFlowFilesForRelationship(REL_SUCCESS)
+        val actualIndices = flowFiles.map { it.attributes.getValue("index").toInt() }.toSet()
+        assertThat(actualIndices, equalTo(expectedIndices))
+    }
+
+    @Test
+    fun `supports transfer of multiple FlowFiles over a single connection`() {
+        val iterations = 300
+        val expectedIndices = (0 until iterations).toSet()
+        repeat(iterations) { index ->
+            val flowFile = TestFlowFile(
+                attributes = mapOf("index" to "$index"),
+                content = "Hello file no. $index!".toByteArray().asList()
+            )
+            testRunner.enqueue(flowFile)
+        }
+        testRunner.setProperty(PutFlowToTCP.CONNECTION_PER_FLOWFILE, "false")
 
         testRunner.run(iterations)
 

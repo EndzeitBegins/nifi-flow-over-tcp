@@ -21,15 +21,14 @@ import org.apache.nifi.processor.ProcessSession
 import org.apache.nifi.processor.Relationship
 import org.apache.nifi.processor.util.StandardValidators
 import org.apache.nifi.processor.util.put.AbstractPutEventProcessor
-import org.apache.nifi.ssl.SSLContextService
 import kotlin.system.measureTimeMillis
 
 @CapabilityDescription(
     """The PutFlowToTCP processor receives a FlowFile and transmits the FlowFile's attributes and content 
-        |over a TCP connection to the configured TCP server. 
-        |By default, each FlowFile is transmitted over a new TCP connection. 
-        |An optional "Connection Per FlowFile" parameter can be specified to change the behaviour, 
-        |so that multiple FlowFiles are transmitted using the same TCP connection."""
+        over a TCP connection to the configured TCP server. 
+        By default, each FlowFile is transmitted over a new TCP connection. 
+        An optional "Connection Per FlowFile" parameter can be specified to change the behaviour, 
+        so that multiple FlowFiles are transmitted using the same TCP connection."""
 )
 @InputRequirement(InputRequirement.Requirement.INPUT_REQUIRED)
 @SeeAlso(ListenFlowFromTCP::class)
@@ -111,19 +110,12 @@ public class PutFlowToTCP : AbstractProcessor() {
             .defaultValue("true")
             .allowableValues("true", "false")
             .build()
-
-        public val REL_SUCCESS: Relationship = Relationship.Builder()
-            .name("success")
-            .description("FlowFiles that are sent successfully to the destination are sent out this relationship.")
-            .build()
-
-        public val REL_FAILURE: Relationship = Relationship.Builder()
-            .name("failure")
-            .description("FlowFiles that failed to send to the destination are sent out this relationship.")
-            .build()
     }
 
-    private val relationships: Set<Relationship> = setOf(REL_SUCCESS, REL_FAILURE)
+    private val relationships: Set<Relationship> = setOf(
+        AbstractPutEventProcessor.REL_SUCCESS,
+        AbstractPutEventProcessor.REL_FAILURE
+    )
 
     private val descriptors: List<PropertyDescriptor> = listOf(
         AbstractPutEventProcessor.HOSTNAME,
@@ -183,10 +175,10 @@ public class PutFlowToTCP : AbstractProcessor() {
             val transitUri = "tcp://${context.hostname}:${context.port}"
             session.provenanceReporter.send(flowFile, transitUri, transmissionTimeInMs)
 
-            session.transfer(flowFile, REL_SUCCESS)
+            session.transfer(flowFile, AbstractPutEventProcessor.REL_SUCCESS)
             session.commitAsync()
         } catch (exception: Exception) {
-            session.transfer(session.penalize(flowFile), REL_FAILURE)
+            session.transfer(session.penalize(flowFile), AbstractPutEventProcessor.REL_FAILURE)
             session.commitAsync()
             context.yield()
 
