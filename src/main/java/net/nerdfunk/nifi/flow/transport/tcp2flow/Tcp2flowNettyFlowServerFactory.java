@@ -1,8 +1,8 @@
 package net.nerdfunk.nifi.flow.transport.tcp2flow;
 
 import net.nerdfunk.nifi.flow.transport.netty.NettyFlowServerFactory;
-import net.nerdfunk.nifi.flow.transport.netty.channel.LogExceptionChannelHandler;
 import net.nerdfunk.nifi.flow.transport.netty.channel.Tcp2flowAndAttributesChannelHandler;
+import org.apache.nifi.event.transport.netty.channel.LogExceptionChannelHandler;
 
 import java.util.Arrays;
 

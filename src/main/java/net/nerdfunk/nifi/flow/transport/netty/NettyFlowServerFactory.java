@@ -7,8 +7,8 @@ import io.netty.channel.socket.nio.NioServerSocketChannel;
 import net.nerdfunk.nifi.flow.transport.FlowException;
 import net.nerdfunk.nifi.flow.transport.FlowServer;
 import net.nerdfunk.nifi.flow.transport.FlowServerFactory;
-import net.nerdfunk.nifi.flow.transport.netty.channel.StandardChannelInitializer;
-import net.nerdfunk.nifi.flow.transport.netty.channel.ssl.ServerSslHandlerChannelInitializer;
+import org.apache.nifi.event.transport.netty.channel.StandardChannelInitializer;
+import org.apache.nifi.event.transport.netty.channel.ssl.ServerSslHandlerChannelInitializer;
 import org.apache.nifi.security.util.ClientAuth;
 import org.jetbrains.annotations.Nullable;
 

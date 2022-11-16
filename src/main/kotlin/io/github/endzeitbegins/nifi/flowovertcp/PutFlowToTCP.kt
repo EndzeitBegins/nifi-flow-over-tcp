@@ -4,21 +4,19 @@ import io.github.endzeitbegins.nifi.flowovertcp.internal.attributes.AttributePre
 import io.github.endzeitbegins.nifi.flowovertcp.internal.attributes.Attributes
 import io.github.endzeitbegins.nifi.flowovertcp.internal.attributes.or
 import io.github.endzeitbegins.nifi.flowovertcp.internal.put.*
-import io.github.endzeitbegins.nifi.flowovertcp.internal.transmission.send.FlowSender
-import io.github.endzeitbegins.nifi.flowovertcp.internal.transmission.send.createFlowSender
+import io.github.endzeitbegins.nifi.flowovertcp.internal.codec.send.TransmittableFlowFile
+import io.github.endzeitbegins.nifi.flowovertcp.internal.codec.send.TransmittableFlowFileSenderFactory
 import org.apache.nifi.annotation.behavior.InputRequirement
 import org.apache.nifi.annotation.documentation.CapabilityDescription
 import org.apache.nifi.annotation.documentation.SeeAlso
 import org.apache.nifi.annotation.documentation.Tags
-import org.apache.nifi.annotation.lifecycle.OnScheduled
-import org.apache.nifi.annotation.lifecycle.OnStopped
 import org.apache.nifi.components.PropertyDescriptor
+import org.apache.nifi.event.transport.configuration.TransportProtocol
+import org.apache.nifi.event.transport.netty.NettyEventSenderFactory
 import org.apache.nifi.expression.ExpressionLanguageScope
 import org.apache.nifi.flowfile.FlowFile
-import org.apache.nifi.processor.AbstractProcessor
 import org.apache.nifi.processor.ProcessContext
-import org.apache.nifi.processor.ProcessSession
-import org.apache.nifi.processor.Relationship
+import org.apache.nifi.processor.ProcessSessionFactory
 import org.apache.nifi.processor.util.StandardValidators
 import org.apache.nifi.processor.util.put.AbstractPutEventProcessor
 import kotlin.system.measureTimeMillis
@@ -33,7 +31,7 @@ import kotlin.system.measureTimeMillis
 @InputRequirement(InputRequirement.Requirement.INPUT_REQUIRED)
 @SeeAlso(ListenFlowFromTCP::class)
 @Tags("put", "tcp", "egress", "flow", "content", "attribute", "diode", "tls", "ssl")
-public class PutFlowToTCP : AbstractProcessor() {
+public class PutFlowToTCP : AbstractPutEventProcessor<TransmittableFlowFile>() {
 
     public companion object {
         private const val attributesListName = "Attributes List"
@@ -46,7 +44,7 @@ public class PutFlowToTCP : AbstractProcessor() {
             .description(
                 """By default, the core FlowFile attributes contained in every FlowFile are transmitted.
                     |Set this to "false" in order to exclude the org.apache.nifi.flowfile.attributes.CoreAttributes
-                    |from the list of attributes to transmit. 
+                    |from the list of attributes to transmit.
                 """.trimMargin()
             )
             .required(true)
@@ -58,14 +56,14 @@ public class PutFlowToTCP : AbstractProcessor() {
             .name("attributes-list")
             .displayName(attributesListName)
             .description(
-                """Comma separated list of FlowFile attributes to transmit. 
-                    |By default, or if this value is left empty, all existing attributes will be included. 
-                    |The attribute name matching is case sensitive. 
+                """Comma separated list of FlowFile attributes to transmit.
+                    |By default, or if this value is left empty, all existing attributes will be included.
+                    |The attribute name matching is case sensitive.
                     |
-                    |If an attribute specified in the list cannot be found in thw FlowFile, 
+                    |If an attribute specified in the list cannot be found in thw FlowFile,
                     |a value according to the property "$nullForMissingAttributeName" will be transmitted.
                     |
-                    |This property can be used in combination with "$attributesRegexName", in which case all attributes 
+                    |This property can be used in combination with "$attributesRegexName", in which case all attributes
                     |which are either in the list or match the regular expression will be transmitted""".trimMargin()
             )
             .required(false)
@@ -77,10 +75,10 @@ public class PutFlowToTCP : AbstractProcessor() {
             .name("attributes-regex")
             .displayName(attributesRegexName)
             .description(
-                """Regular expression to match FlowFile attributes to transmit. 
+                """Regular expression to match FlowFile attributes to transmit.
                     |By default, or if this value is left empty, all existing attributes will be included.
                     |
-                    |This property can be used in combination with "$attributesListName", in which case all attributes 
+                    |This property can be used in combination with "$attributesListName", in which case all attributes
                     |which are either in the list or match the regular expression will be transmitted""".trimMargin()
             )
             .required(false)
@@ -93,100 +91,53 @@ public class PutFlowToTCP : AbstractProcessor() {
             .name("use-null-for-missing-attribute")
             .displayName(nullForMissingAttributeName)
             .description(
-                """By default, an empty string is used for attributes defined in the "$attributesListName" but missing in the FlowFile. 
+                """By default, an empty string is used for attributes defined in the "$attributesListName" but missing in the FlowFile.
                     |Set this to "true" to write a value of "null" for missing attributes instead.""".trimMargin()
             )
             .required(true)
             .allowableValues("true", "false")
             .defaultValue("false")
             .build()
-
-        public val CONNECTION_PER_FLOWFILE: PropertyDescriptor = PropertyDescriptor.Builder()
-            .displayName("Connection per FlowFile")
-            .name("connection-per-flowfile")
-            .description("""By default, each FlowFile is transmitted over an individual connection.
-                |Set this to "false" to reuse connections for FlowFile transmissions.""".trimMargin())
-            .required(true)
-            .defaultValue("true")
-            .allowableValues("true", "false")
-            .build()
     }
 
-    private val relationships: Set<Relationship> = setOf(
-        AbstractPutEventProcessor.REL_SUCCESS,
-        AbstractPutEventProcessor.REL_FAILURE
-    )
-
-    private val descriptors: List<PropertyDescriptor> = listOf(
-        AbstractPutEventProcessor.HOSTNAME,
-        AbstractPutEventProcessor.PORT,
-
+    override fun getAdditionalProperties(): List<PropertyDescriptor> = listOf(
         INCLUDE_CORE_ATTRIBUTES,
         ATTRIBUTES_LIST,
         ATTRIBUTES_REGEX,
         NULL_VALUE_FOR_EMPTY_STRING,
 
         CONNECTION_PER_FLOWFILE,
-
-        AbstractPutEventProcessor.MAX_SOCKET_SEND_BUFFER_SIZE,
-        AbstractPutEventProcessor.TIMEOUT,
-        AbstractPutEventProcessor.SSL_CONTEXT_SERVICE,
+        SSL_CONTEXT_SERVICE,
     )
 
-    override fun getRelationships(): Set<Relationship> = relationships
-    override fun getSupportedPropertyDescriptors(): List<PropertyDescriptor> = descriptors
-
-    private var flowSender: FlowSender<*>? = null
-
-    @OnScheduled
-    public fun onScheduled(context: ProcessContext) {
-        flowSender = createFlowSender(context)
-    }
-
-    @OnStopped
-    public fun onStopped() {
-        flowSender?.close()
-    }
-
-    override fun onTrigger(context: ProcessContext, session: ProcessSession) {
+    override fun onTrigger(context: ProcessContext, sessionFactory: ProcessSessionFactory) {
+        val session = sessionFactory.createSession()
         val flowFile = session.get()
             ?: return
 
-        val flowSender: FlowSender<*>? = flowSender
-
         try {
-            checkNotNull(flowSender) { "FlowSender has not been properly initialized!" }
-
             val transmissionTimeInMs = measureTimeMillis {
-                flowSender.useChannel { channel ->
+                session.read(flowFile) { inputStream ->
                     val attributesToTransmit = flowFile.filterAttributesToTransmit(context)
 
-                    session.read(flowFile) { contentStream ->
-                        channel.sendFlow(
-                            attributes = attributesToTransmit,
-                            contentLength = flowFile.size,
-                            content = contentStream,
-                        )
-                    }
+                    val transmittableFlowFile = TransmittableFlowFile(
+                        attributes = attributesToTransmit,
+                        contentLength = flowFile.size,
+                        contentStream = inputStream,
+                    )
 
+                    eventSender.sendEvent(transmittableFlowFile)
                 }
             }
 
-            val transitUri = "tcp://${context.hostname}:${context.port}"
             session.provenanceReporter.send(flowFile, transitUri, transmissionTimeInMs)
-
-            session.transfer(flowFile, AbstractPutEventProcessor.REL_SUCCESS)
+            session.transfer(flowFile, REL_SUCCESS)
             session.commitAsync()
-        } catch (exception: Exception) {
-            session.transfer(session.penalize(flowFile), AbstractPutEventProcessor.REL_FAILURE)
+        } catch (e: Exception) {
+            logger.error("Send Failed {}", flowFile, e)
+            session.transfer(session.penalize(flowFile), REL_FAILURE)
             session.commitAsync()
             context.yield()
-
-            logger.error(
-                "Exception while handling a process session, transferring {} to failure.",
-                arrayOf<Any>(flowFile),
-                exception
-            )
         }
     }
 
@@ -230,18 +181,13 @@ public class PutFlowToTCP : AbstractProcessor() {
         }
     }
 
-    private fun createFlowSender(context: ProcessContext): FlowSender<*> = createFlowSender(
-        hostname = context.hostname,
-        port = context.port,
+    override fun getNettyEventSenderFactory(
+        hostname: String,
+        port: Int,
+        protocol: String
+    ): NettyEventSenderFactory<TransmittableFlowFile> =
+        TransmittableFlowFileSenderFactory(hostname, port, TransportProtocol.TCP, logger)
 
-        separateConnectionPerFlowFile = context.separateConnectionPerFlowFile,
+    override fun getProtocol(context: ProcessContext): String = TCP_VALUE.value
 
-        maxConcurrentTasks = context.maxConcurrentTasks,
-        maxSocketSendBufferSize = context.maxSocketSendBufferSize,
-        timeout = context.timeout,
-        sslContext = context.sslContextService?.createContext(),
-
-        logger = logger,
-        logPrefix = "${javaClass.simpleName}[$identifier]",
-    )
 }

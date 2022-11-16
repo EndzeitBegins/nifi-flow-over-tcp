@@ -4,6 +4,7 @@ import com.natpryce.hamkrest.assertion.assertThat
 import com.natpryce.hamkrest.equalTo
 import com.natpryce.hamkrest.hasElement
 import com.natpryce.hamkrest.hasSize
+import io.github.endzeitbegins.nifi.flowovertcp.PutFlowToTCP.Companion.INCLUDE_CORE_ATTRIBUTES
 import io.github.endzeitbegins.nifi.flowovertcp.internal.attributes.coreAttributes
 import io.github.endzeitbegins.nifi.flowovertcp.testing.flowfile.TestFlowFile
 import io.github.endzeitbegins.nifi.flowovertcp.testing.flowfile.enqueue
@@ -11,8 +12,7 @@ import io.github.endzeitbegins.nifi.flowovertcp.testing.flowfile.toTestFlowFile
 import io.github.endzeitbegins.nifi.flowovertcp.testing.tcp.testTcpServer
 import io.github.endzeitbegins.nifi.flowovertcp.testing.testrunner.newTestRunner
 import org.apache.nifi.processor.util.put.AbstractPutEventProcessor
-import org.apache.nifi.processor.util.put.AbstractPutEventProcessor.REL_FAILURE
-import org.apache.nifi.processor.util.put.AbstractPutEventProcessor.REL_SUCCESS
+import org.apache.nifi.processor.util.put.AbstractPutEventProcessor.*
 import org.junit.jupiter.api.*
 import java.io.InputStream
 import kotlin.random.Random
@@ -40,8 +40,9 @@ class PutFlowToTCPTest {
         testRunner.threadCount = 1
         testRunner.setClustered(false)
 
-        testRunner.setProperty(PutFlowToTCP.INCLUDE_CORE_ATTRIBUTES, "false")
-        testRunner.setProperty(AbstractPutEventProcessor.PORT, "$port")
+        testRunner.setProperty(INCLUDE_CORE_ATTRIBUTES, "false")
+        testRunner.setProperty(PORT, "$port")
+        testRunner.setProperty(CONNECTION_PER_FLOWFILE, "true")
     }
 
     @AfterAll
@@ -106,7 +107,7 @@ class PutFlowToTCPTest {
             attributes = mapOf("foo" to "bar"),
             content = "Hello failing test!".toByteArray().asList()
         )
-        testRunner.setProperty(AbstractPutEventProcessor.PORT, "${port + 42}")
+        testRunner.setProperty(PORT, "${port + 42}")
         testRunner.enqueue(flowFile)
 
         testRunner.run()
@@ -214,7 +215,7 @@ class PutFlowToTCPTest {
             )
             testRunner.enqueue(flowFile)
         }
-        testRunner.setProperty(PutFlowToTCP.CONNECTION_PER_FLOWFILE, "false")
+        testRunner.setProperty(CONNECTION_PER_FLOWFILE, "false")
 
         testRunner.run(iterations)
 
@@ -299,7 +300,7 @@ class PutFlowToTCPTest {
                 attributes = emptyMap(),
                 content = emptyList()
             )
-            testRunner.setProperty(PutFlowToTCP.INCLUDE_CORE_ATTRIBUTES, "true")
+            testRunner.setProperty(INCLUDE_CORE_ATTRIBUTES, "true")
             testRunner.enqueue(flowFile)
 
             testRunner.run()
