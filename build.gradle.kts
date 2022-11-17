@@ -1,4 +1,6 @@
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
+import java.time.Instant
+import java.time.temporal.ChronoUnit
 
 plugins {
     java
@@ -15,7 +17,9 @@ repositories {
 }
 
 group = "io.github.endzeitbegins"
+val artifactName = "nifi-flow-over-tcp"
 
+val niFiVersion = "1.18.0"
 
 kotlin {
     explicitApi()
@@ -23,7 +27,6 @@ kotlin {
 
 dependencies {
     // Apache NiFi
-    val niFiVersion = "1.18.0"
     implementation("org.apache.nifi:nifi-api:$niFiVersion")
     implementation("org.apache.nifi:nifi-utils:$niFiVersion")
     // former nifi-processor-utils - see https://issues.apache.org/jira/browse/NIFI-9610
@@ -60,12 +63,12 @@ signing {
 
 publishing {
     publications.create<MavenPublication>("maven") {
-        artifactId = "nifi-flow-over-tcp"
+        artifactId = artifactName
 
         artifact(tasks["nar"])
 
         pom {
-            name.set("nifi-flow-over-tcp")
+            name.set(artifactName)
             description.set("A Apache NiFi Archive (.nar) with Processor implementations for transmitting FlowFiles over bare TCP.")
             url.set("https://github.com/EndzeitBegins/nifi-flow-over-tcp")
 
@@ -124,5 +127,39 @@ tasks {
 
     test {
         useJUnitPlatform()
+    }
+
+    nar {
+        // manual workaround to fix issue https://github.com/lhotari/gradle-nar-plugin/issues/2
+
+        // 1. write extension-manifest.xml
+        val extensionManifestFile = file("extension-manifest.xml")
+        doFirst {
+            val extensionManifestContent = """
+                <extensionManifest>
+                    <groupId>$group</groupId>
+                    <artifactId>$artifactName</artifactId>
+                    <version>${project.version}</version>
+                    <systemApiVersion>${niFiVersion}</systemApiVersion>
+                    <extensions/>
+                </extensionManifest>
+            """.trimIndent()
+
+            extensionManifestFile.writeText(extensionManifestContent)
+        }
+        from(extensionManifestFile) {
+            into("META-INF/docs/")
+        }
+        doLast {
+            extensionManifestFile.delete()
+        }
+
+        // 2. add required attributes to MANIFEST.MF
+        manifest {
+            attributes(
+                "Build-Timestamp" to "${Instant.now().truncatedTo(ChronoUnit.SECONDS)}",
+                "Clone-During-Instance-Class-Loading" to "false",
+            )
+        }
     }
 }

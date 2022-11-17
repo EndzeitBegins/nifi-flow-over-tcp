@@ -53,9 +53,10 @@ The codec used is described in more detail under "[PutFlowToTCP](#PutFlowToTCP)"
 
 ## Attribution
 
-This project was forked from [nerdfunk-net/diode][fork],
+This project originated as a fork from [nerdfunk-net/diode][fork],
 mainly to improve test coverage and incorporate some refactorings. 
 Huge thanks to the [original author(s)][fork-authors].
+Additionally, the original [Apache NiFi][nifi] project has a large influence on the implementation.
 
 ## Contributions
 
