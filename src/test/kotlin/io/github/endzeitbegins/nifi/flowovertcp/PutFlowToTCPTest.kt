@@ -11,42 +11,34 @@ import io.github.endzeitbegins.nifi.flowovertcp.testing.flowfile.enqueue
 import io.github.endzeitbegins.nifi.flowovertcp.testing.flowfile.toTestFlowFile
 import io.github.endzeitbegins.nifi.flowovertcp.testing.tcp.testTcpServer
 import io.github.endzeitbegins.nifi.flowovertcp.testing.testrunner.newTestRunner
-import org.apache.nifi.processor.util.put.AbstractPutEventProcessor
 import org.apache.nifi.processor.util.put.AbstractPutEventProcessor.*
+import org.apache.nifi.remote.io.socket.NetworkUtils
 import org.junit.jupiter.api.*
 import java.io.InputStream
 import kotlin.random.Random
 
-@TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class PutFlowToTCPTest {
 
-    private val port = 27412
+    private val port = NetworkUtils.availablePort()
 
-    private val testRunner = newTestRunner<PutFlowToTCP>()
+    private val testRunner = newTestRunner<PutFlowToTCP> {
+        threadCount = 1
+        setClustered(false)
+
+        setProperty(INCLUDE_CORE_ATTRIBUTES, "false")
+        setProperty(PORT, "$port")
+        setProperty(CONNECTION_PER_FLOWFILE, "true")
+    }
 
     private val tcpServer = testTcpServer()
 
-    @BeforeAll
+    @BeforeEach
     fun startTcpServer() {
         tcpServer.start(port)
     }
 
-    @BeforeEach
+    @AfterEach
     fun setUp() {
-        testRunner.clearTransferState()
-        testRunner.clearProperties()
-        tcpServer.clearCache()
-
-        testRunner.threadCount = 1
-        testRunner.setClustered(false)
-
-        testRunner.setProperty(INCLUDE_CORE_ATTRIBUTES, "false")
-        testRunner.setProperty(PORT, "$port")
-        testRunner.setProperty(CONNECTION_PER_FLOWFILE, "true")
-    }
-
-    @AfterAll
-    fun shutdownTcpServer() {
         tcpServer.shutdown()
     }
 

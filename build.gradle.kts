@@ -1,3 +1,5 @@
+import org.gradle.api.tasks.testing.logging.TestExceptionFormat
+import org.gradle.api.tasks.testing.logging.TestLogEvent.*
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 import java.time.Instant
 import java.time.temporal.ChronoUnit
@@ -122,6 +124,13 @@ tasks {
 
     test {
         useJUnitPlatform()
+
+        testLogging {
+            showStandardStreams = true
+            exceptionFormat = TestExceptionFormat.FULL
+
+            events(PASSED, SKIPPED, FAILED, STANDARD_OUT, STANDARD_ERROR)
+        }
     }
 
     nar {
