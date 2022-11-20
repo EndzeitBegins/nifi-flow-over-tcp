@@ -35,8 +35,9 @@ dependencies {
     // former nifi-processor-utils - see https://issues.apache.org/jira/browse/NIFI-9610
     implementation("org.apache.nifi:nifi-event-listen:$niFiVersion")
     implementation("org.apache.nifi:nifi-event-put:$niFiVersion")
-    // - NAR dependencies
-    implementation("org.apache.nifi:nifi-standard-services-api-nar:$niFiVersion")
+
+    // - NAR dependency
+    parentNar("org.apache.nifi:nifi-standard-services-api-nar:$niFiVersion")
 
     // JSON (de)serialization
     val jacksonVersion = "2.14.0"
@@ -139,13 +140,22 @@ tasks {
         // 1. write extension-manifest.xml
         val extensionManifestFile = file("extension-manifest.xml")
         doFirst {
+            val parentNarDependency: Dependency? = parentNarConfiguration?.allDependencies?.singleOrNull()
+
             val extensionManifestContent = """
                 <extensionManifest>
                     <groupId>$group</groupId>
                     <artifactId>$artifactName</artifactId>
                     <version>${project.version}</version>
-                    <systemApiVersion>${niFiVersion}</systemApiVersion>
-                    <extensions/>
+                    <systemApiVersion>${niFiVersion}</systemApiVersion>${
+                    if (parentNarDependency != null) """
+                        <parentNar>
+                            <groupId>${parentNarDependency.group}</groupId>
+                            <artifactId>${parentNarDependency.name}</artifactId>
+                            <version>${parentNarDependency.version}</version>
+                        </parentNar>        
+                    """.trimIndent() else ""
+            }<extensions/>
                 </extensionManifest>
             """.trimIndent()
 
@@ -166,4 +176,9 @@ tasks {
             )
         }
     }
+}
+
+fun DependencyHandlerScope.parentNar(parentNarDependency: String) {
+    nar(parentNarDependency)
+    testImplementation(parentNarDependency)
 }
