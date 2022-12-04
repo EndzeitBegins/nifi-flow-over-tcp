@@ -1,7 +1,7 @@
 # nifi-flow-over-tcp
 
 ![CI Status](https://github.com/EndzeitBegins/nifi-flow-over-tcp/actions/workflows/gradle.yml/badge.svg)
-[![Maven Central](https://img.shields.io/maven-central/v/io.github.endzeitbegins/nifi-flow-over-tcp.svg)](http://search.maven.org/#search%7Cga%7C1%7Cg%3A%22io.github.endzeitbegins%22%20AND%20a%3A%22nifi-flow-over-tcp%22)
+[![Maven Central](https://img.shields.io/maven-central/v/io.github.endzeitbegins/nifi-flow-over-tcp?color=ff69b4)](http://search.maven.org/#search%7Cga%7C1%7Cg%3A%22io.github.endzeitbegins%22%20AND%20a%3A%22nifi-flow-over-tcp%22)
 
 Use this project to transfer your [Apache NiFi][nifi] FlowFiles 
 from one cluster to another, using bare TCP connections.
