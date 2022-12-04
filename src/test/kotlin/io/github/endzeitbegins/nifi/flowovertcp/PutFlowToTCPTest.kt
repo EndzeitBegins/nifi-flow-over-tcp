@@ -1,9 +1,7 @@
 package io.github.endzeitbegins.nifi.flowovertcp
 
+import com.natpryce.hamkrest.*
 import com.natpryce.hamkrest.assertion.assertThat
-import com.natpryce.hamkrest.equalTo
-import com.natpryce.hamkrest.hasElement
-import com.natpryce.hamkrest.hasSize
 import io.github.endzeitbegins.nifi.flowovertcp.PutFlowToTCP.Companion.INCLUDE_CORE_ATTRIBUTES
 import io.github.endzeitbegins.nifi.flowovertcp.internal.attributes.coreAttributes
 import io.github.endzeitbegins.nifi.flowovertcp.testing.flowfile.TestFlowFile
@@ -11,6 +9,8 @@ import io.github.endzeitbegins.nifi.flowovertcp.testing.flowfile.enqueue
 import io.github.endzeitbegins.nifi.flowovertcp.testing.flowfile.toTestFlowFile
 import io.github.endzeitbegins.nifi.flowovertcp.testing.tcp.testTcpServer
 import io.github.endzeitbegins.nifi.flowovertcp.testing.testrunner.newTestRunner
+import io.github.endzeitbegins.nifi.flowovertcp.testing.utils.not
+import org.apache.nifi.flowfile.attributes.CoreAttributes
 import org.apache.nifi.processor.util.put.AbstractPutEventProcessor.*
 import org.apache.nifi.remote.io.socket.NetworkUtils
 import org.junit.jupiter.api.*
@@ -287,7 +287,7 @@ class PutFlowToTCPTest {
         }
 
         @Test
-        fun `supports filtering out core attributes`() {
+        fun `supports filtering for core attributes`() {
             val flowFile = TestFlowFile(
                 attributes = emptyMap(),
                 content = emptyList()
@@ -301,8 +301,25 @@ class PutFlowToTCPTest {
             val transferredFlowFiles = tcpServer.receivedBytes.values.map { it.toTestFlowFile() }
             assertThat(transferredFlowFiles, hasSize(equalTo(1)))
             assertAll(transferredFlowFiles[0].attributes.keys.map { attributeKey ->
-                { assertThat(coreAttributes, hasElement(attributeKey)) }
+                { assertThat(attributeKey, isIn(coreAttributes)) }
             })
+        }
+
+        @Test
+        internal fun `does NOT transfer FlowFile uuid, because it cannot be set on destination`() {
+            val flowFile = TestFlowFile(
+                attributes = emptyMap(),
+                content = emptyList()
+            )
+            testRunner.setProperty(INCLUDE_CORE_ATTRIBUTES, "true")
+            testRunner.enqueue(flowFile)
+
+            testRunner.run()
+
+            testRunner.assertAllFlowFilesTransferred(REL_SUCCESS, 1)
+            val transferredFlowFiles = tcpServer.receivedBytes.values.map { it.toTestFlowFile() }
+            assertThat(transferredFlowFiles, hasSize(equalTo(1)))
+            assertThat(transferredFlowFiles[0].attributes.keys, not(hasElement(CoreAttributes.UUID.key())))
         }
     }
 

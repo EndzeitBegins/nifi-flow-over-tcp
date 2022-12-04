@@ -3,9 +3,9 @@ package io.github.endzeitbegins.nifi.flowovertcp
 import io.github.endzeitbegins.nifi.flowovertcp.internal.attributes.AttributePredicate
 import io.github.endzeitbegins.nifi.flowovertcp.internal.attributes.Attributes
 import io.github.endzeitbegins.nifi.flowovertcp.internal.attributes.or
-import io.github.endzeitbegins.nifi.flowovertcp.internal.put.*
 import io.github.endzeitbegins.nifi.flowovertcp.internal.codec.send.TransmittableFlowFile
 import io.github.endzeitbegins.nifi.flowovertcp.internal.codec.send.TransmittableFlowFileSenderFactory
+import io.github.endzeitbegins.nifi.flowovertcp.internal.put.*
 import org.apache.nifi.annotation.behavior.InputRequirement
 import org.apache.nifi.annotation.documentation.CapabilityDescription
 import org.apache.nifi.annotation.documentation.SeeAlso
@@ -44,7 +44,8 @@ public class PutFlowToTCP : AbstractPutEventProcessor<TransmittableFlowFile>() {
             .description(
                 """By default, the core FlowFile attributes contained in every FlowFile are transmitted.
                     |Set this to "false" in order to exclude the org.apache.nifi.flowfile.attributes.CoreAttributes
-                    |from the list of attributes to transmit.
+                    |from the list of attributes to transmit. 
+                    |Note that the FlowFile uuid is never transmitted, as it cannot be restored on the receiving side.  
                 """.trimMargin()
             )
             .required(true)
@@ -155,13 +156,13 @@ public class PutFlowToTCP : AbstractPutEventProcessor<TransmittableFlowFile>() {
         } else {
             var shouldBeTransmitted: AttributePredicate = { false }
             if (attributesToIncludeRegex != null) {
-                shouldBeTransmitted = shouldBeTransmitted.or(matchesRegex(attributesToIncludeRegex))
+                shouldBeTransmitted = shouldBeTransmitted or matchesRegex(attributesToIncludeRegex)
             }
             if (attributesToIncludeSet.isNotEmpty()) {
-                shouldBeTransmitted = shouldBeTransmitted.or(isIn(attributesToIncludeSet))
+                shouldBeTransmitted = shouldBeTransmitted or isIn(attributesToIncludeSet)
             }
             if (includeCoreAttributes) {
-                shouldBeTransmitted = shouldBeTransmitted.or(isCoreAttribute)
+                shouldBeTransmitted = shouldBeTransmitted or isCoreAttribute
             }
 
             val baseResult = allAttributes
@@ -177,8 +178,8 @@ public class PutFlowToTCP : AbstractPutEventProcessor<TransmittableFlowFile>() {
                 }
             }
 
-            return baseResult
-        }
+            baseResult
+        }.filterNot(isFlowFileUuid)
     }
 
     override fun getNettyEventSenderFactory(
