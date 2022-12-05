@@ -46,7 +46,7 @@ dependencies {
     implementation("com.fasterxml.jackson.module:jackson-module-kotlin:$jacksonVersion")
 
     // utility libraries
-    implementation("commons-net:commons-net:3.8.0")
+    implementation("commons-net:commons-net:3.9.0")
 
     // testing
     testImplementation("org.junit.jupiter:junit-jupiter:5.9.1")
