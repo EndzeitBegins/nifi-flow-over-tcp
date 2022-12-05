@@ -22,7 +22,7 @@ repositories {
 group = "io.github.endzeitbegins"
 val artifactName = "nifi-flow-over-tcp"
 
-val niFiVersion = "1.18.0"
+val niFiVersion = "1.19.0"
 
 kotlin {
     explicitApi()
