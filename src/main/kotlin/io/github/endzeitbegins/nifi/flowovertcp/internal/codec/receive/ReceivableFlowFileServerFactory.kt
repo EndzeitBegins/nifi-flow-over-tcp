@@ -2,21 +2,26 @@ package io.github.endzeitbegins.nifi.flowovertcp.internal.codec.receive
 
 import net.nerdfunk.nifi.flow.transport.netty.channel.Tcp2flowAndAttributesChannelHandler
 import net.nerdfunk.nifi.flow.transport.tcp2flow.Tcp2flowAndAttributesDecoder
-import net.nerdfunk.nifi.flow.transport.tcp2flow.Tcp2flowConfiguration
 import org.apache.nifi.event.transport.configuration.TransportProtocol
 import org.apache.nifi.event.transport.netty.NettyEventServerFactory
 import org.apache.nifi.event.transport.netty.channel.LogExceptionChannelHandler
 import org.apache.nifi.logging.ComponentLog
+import org.apache.nifi.processor.ProcessSessionFactory
 import org.apache.nifi.processor.Processor
+import org.apache.nifi.processor.Relationship
 import java.net.InetAddress
+import java.util.concurrent.atomic.AtomicReference
 
 internal class ReceivableFlowFileServerFactory(
     address: InetAddress?,
     port: Int,
     protocol: TransportProtocol,
-    logger: ComponentLog,
 
-    tcp2flowconfiguration: Tcp2flowConfiguration,  // TODO
+    addNetworkInformationAttributes: Boolean,
+    processSessionFactoryReference: AtomicReference<ProcessSessionFactory>,
+    targetRelationship: Relationship,
+
+    logger: ComponentLog,
 ) : NettyEventServerFactory(address, port, protocol) {
 
     init {
@@ -29,7 +34,12 @@ internal class ReceivableFlowFileServerFactory(
                 /** TODO */
                 Tcp2flowAndAttributesDecoder(logger),
                 /** TODO */
-                Tcp2flowAndAttributesChannelHandler(tcp2flowconfiguration, tcp2flowconfiguration.addIpAndPort, logger),
+                Tcp2flowAndAttributesChannelHandler(
+                    addNetworkInformationAttributes,
+                    processSessionFactoryReference,
+                    targetRelationship,
+                    logger
+                ),
             )
         }
     }

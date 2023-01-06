@@ -4,7 +4,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.SimpleChannelInboundHandler;
 import net.nerdfunk.nifi.flow.transport.message.FlowMessage;
-import net.nerdfunk.nifi.flow.transport.tcp2flow.Tcp2flowConfiguration;
 import org.apache.nifi.flowfile.FlowFile;
 import org.apache.nifi.logging.ComponentLog;
 import org.apache.nifi.processor.ProcessSession;
@@ -17,32 +16,32 @@ import java.io.OutputStream;
 import java.net.InetSocketAddress;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicReference;
 
 public class Tcp2flowAndAttributesChannelHandler extends SimpleChannelInboundHandler<FlowMessage> {
 
     private final AtomicReference<ProcessSessionFactory> sessionFactory;
-    private final CountDownLatch sessionFactorySetSignal;
     private final Relationship relationshipSuccess;
     private final ComponentLog logger;
+    private final boolean addIpAndPort;
+
+    private boolean haveActiveSession = false;
+
     private ProcessSession processSession;
     private OutputStream flowFileOutputStream;
     private FlowFile flowFile;
-    private boolean haveActiveSession = false;
-    private boolean addIpAndPort;
 
-    public Tcp2flowAndAttributesChannelHandler(Tcp2flowConfiguration tcp2flowconfiguration,
-                                               boolean addIpAndPort,
+    public Tcp2flowAndAttributesChannelHandler(boolean addIpAndPort,
+                                               AtomicReference<ProcessSessionFactory> processSessionFactory,
+                                               Relationship relationshipSuccess,
                                                ComponentLog logger) {
         super();
-        this.sessionFactory = tcp2flowconfiguration.getProcessSessionFactory();
-        this.sessionFactorySetSignal = tcp2flowconfiguration.getSessionFactorySetSignal();
 
-        this.relationshipSuccess = tcp2flowconfiguration.getRelationshipSuccess();
         this.addIpAndPort = addIpAndPort;
+        this.sessionFactory = processSessionFactory;
+        this.relationshipSuccess = relationshipSuccess;
+
         this.logger = logger;
 
         this.processSession = null;
@@ -160,18 +159,16 @@ public class Tcp2flowAndAttributesChannelHandler extends SimpleChannelInboundHan
         return processSessionFactory.createSession();
     }
 
-    /**
-     * getProcessSessionFactory
-     *
-     * @return ProcessSessionFactory
-     * @throws InterruptedException
-     * @throws TimeoutException
-     */
     private ProcessSessionFactory getProcessSessionFactory() throws InterruptedException, TimeoutException {
-        if (sessionFactorySetSignal.await(10000, TimeUnit.MILLISECONDS)) {
-            return sessionFactory.get();
-        } else {
-            throw new TimeoutException("Waiting period for sessionFactory is over.");
+        ProcessSessionFactory processSessionFactory = sessionFactory.get();
+
+        while (processSessionFactory == null) {
+            Thread.sleep(100);
+
+            processSessionFactory = sessionFactory.get();
+
         }
+
+        return processSessionFactory;
     }
 }

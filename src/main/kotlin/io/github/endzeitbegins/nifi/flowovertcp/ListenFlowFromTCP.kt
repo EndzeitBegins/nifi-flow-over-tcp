@@ -1,7 +1,6 @@
 package io.github.endzeitbegins.nifi.flowovertcp
 
 import io.github.endzeitbegins.nifi.flowovertcp.internal.codec.receive.ReceivableFlowFileServerFactory
-import net.nerdfunk.nifi.flow.transport.tcp2flow.Tcp2flowConfiguration
 import org.apache.nifi.annotation.behavior.InputRequirement
 import org.apache.nifi.annotation.behavior.WritesAttribute
 import org.apache.nifi.annotation.behavior.WritesAttributes
@@ -29,6 +28,7 @@ import org.apache.nifi.ssl.SSLContextService
 import java.net.InetAddress
 import java.net.UnknownHostException
 import java.time.Duration
+import java.util.concurrent.atomic.AtomicReference
 import javax.net.ssl.SSLContext
 
 
@@ -108,22 +108,11 @@ public class ListenFlowFromTCP : AbstractSessionFactoryProcessor() {
 
     @Volatile
     private var eventServer: EventServer? = null
+    private val sessionFactoryReference: AtomicReference<ProcessSessionFactory> = AtomicReference()
 
-    //    private var tcp2flow: Tcp2flow? = null
-    private var tcp2flowconfiguration: Tcp2flowConfiguration? = null
-
-    /**
-     * Triggers the processor but does nothing fancy
-     *
-     * @param context        the ProcessContext
-     * @param sessionFactory the session Factory
-     * @throws ProcessException if something went wrong
-     */
-    @Throws(ProcessException::class)
     override fun onTrigger(context: ProcessContext, sessionFactory: ProcessSessionFactory) {
-        if (tcp2flowconfiguration!!.sessionFactoryCompareAndSet(null, sessionFactory)) {
-            tcp2flowconfiguration!!.sessionFactorySetSignalCountDown()
-        }
+        sessionFactoryReference.set(sessionFactory)
+
         context.yield()
     }
 
@@ -158,20 +147,16 @@ public class ListenFlowFromTCP : AbstractSessionFactoryProcessor() {
                 SSLContextService::class.java
             )
 
-
-            // TODO order  + refacotr
-            tcp2flowconfiguration = Tcp2flowConfiguration(
-                writeIpAndPort,
-                AbstractListenEventProcessor.REL_SUCCESS,
-                logger
-            )
-
             val eventFactory = ReceivableFlowFileServerFactory(
-                address,
-                port,
-                TransportProtocol.TCP,
-                logger,
-                tcp2flowconfiguration!!
+                address = address,
+                port = port,
+                protocol = TransportProtocol.TCP,
+
+                addNetworkInformationAttributes = writeIpAndPort,
+                processSessionFactoryReference = sessionFactoryReference,
+                targetRelationship = AbstractListenEventProcessor.REL_SUCCESS,
+
+                logger = logger,
             )
 
             // todo order
@@ -224,6 +209,6 @@ public class ListenFlowFromTCP : AbstractSessionFactoryProcessor() {
         eventServer?.shutdown()
         eventServer = null
 
-        tcp2flowconfiguration?.setSessionFactory(null) // TODO
+        sessionFactoryReference.set(null)
     }
 }
