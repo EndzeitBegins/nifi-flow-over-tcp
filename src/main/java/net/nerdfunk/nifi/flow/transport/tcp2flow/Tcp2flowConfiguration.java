@@ -3,24 +3,15 @@ package net.nerdfunk.nifi.flow.transport.tcp2flow;
 import org.apache.nifi.logging.ComponentLog;
 import org.apache.nifi.processor.ProcessSessionFactory;
 import org.apache.nifi.processor.Relationship;
-import org.apache.nifi.ssl.SSLContextService;
-import org.jetbrains.annotations.Nullable;
 
 import java.net.InetAddress;
-import java.net.UnknownHostException;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicReference;
 
 public class Tcp2flowConfiguration {
 
-    private final InetAddress bindAddress;
-    private final int port;
-    private final int reader_idle_timeout;
-    private final String ipfilterlist;
-    private final SSLContextService sslContextService;
     private final boolean addIpAndPort;
     private final Relationship relationship_success;
-    private final Relationship relationship_error;
     private final ComponentLog logger;
 
     private final CountDownLatch sessionFactorySetSignal;
@@ -29,68 +20,20 @@ public class Tcp2flowConfiguration {
     /**
      * constructor
      *
-     * @param bindAddress Binding Address
-     * @param port Port used
-     * @param reader_idle_timeout Timeout
-     * @param ipfilterlist IP filter list
-     * @param sslContextService sslContextService
      * @param relationship_success Relationship Success
-     * @param relationship_error Relationship Error
      * @param logger Logger
-     * @throws UnknownHostException UnknownHostException
      */
     public Tcp2flowConfiguration(
-            @Nullable
-            InetAddress bindAddress,
-            int port,
-            int reader_idle_timeout,
-            String ipfilterlist,
-            SSLContextService sslContextService,
             boolean addIpAndPort,
             Relationship relationship_success,
-            Relationship relationship_error,
-            ComponentLog logger) throws UnknownHostException {
-
-        this.bindAddress = bindAddress;
-        this.port = port;
-        this.reader_idle_timeout = reader_idle_timeout;
-        this.ipfilterlist = ipfilterlist;
-        this.sslContextService = sslContextService;
+            ComponentLog logger) {
         this.addIpAndPort = addIpAndPort;
         this.relationship_success = relationship_success;
-        this.relationship_error = relationship_error;
         this.logger = logger;
 
         this.sessionFactorySetSignal = new CountDownLatch(1);
         this.sessionFactory = new AtomicReference<>();
         this.sessionFactory.set(null);
-    }
-
-    /**
-     * returns IP Filterlist
-     *
-     * @return String
-     */
-    public String getIpFilterlist() {
-        return ipfilterlist;
-    }
- 
-    /**
-     * returns reader timeout
-     *
-     * @return integer
-     */
-    public int getReaderTimeout() {
-        return reader_idle_timeout;
-    }
-    
-    /**
-     *  sets SSL Context
-     * 
-     * @return SSLContextService
-     */
-    public SSLContextService getSslContextService() {
-        return sslContextService;
     }
 
     /**
@@ -130,25 +73,6 @@ public class Tcp2flowConfiguration {
     }
 
     /**
-     * returns the bind Address
-     *
-     * @return InetAddress
-     */
-    public InetAddress getBindAddress() {
-        return bindAddress;
-    }
-
-    
-    /**
-     * returns the TCP Port
-     *
-     * @return integer
-     */
-    public int getPort() {
-        return port;
-    }
-
-    /**
      * returns the sessionFactory
      *
      * @return AtomicReference
@@ -166,14 +90,6 @@ public class Tcp2flowConfiguration {
         return relationship_success;
     }
 
-    /**
-     * returns the FAILED relationship
-     *
-     * @return Relationship
-     */
-    public Relationship getRelationshipError() {
-        return relationship_error;
-    }
     /**
      * returns the logger object
      *

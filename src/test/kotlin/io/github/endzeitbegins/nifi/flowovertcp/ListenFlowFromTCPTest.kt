@@ -3,6 +3,7 @@ package io.github.endzeitbegins.nifi.flowovertcp
 import com.natpryce.hamkrest.assertion.assertThat
 import com.natpryce.hamkrest.equalTo
 import com.natpryce.hamkrest.hasElement
+import io.github.endzeitbegins.nifi.flowovertcp.internal.codec.send.toByteRepresentation
 import io.github.endzeitbegins.nifi.flowovertcp.testing.flowfile.TestFlowFile
 import io.github.endzeitbegins.nifi.flowovertcp.testing.flowfile.toByteRepresentation
 import io.github.endzeitbegins.nifi.flowovertcp.testing.flowfile.toTestFlowFile
@@ -13,8 +14,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.joinAll
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
-import io.github.endzeitbegins.nifi.flowovertcp.ListenFlowFromTCP.Companion.REL_SUCCESS
-import io.github.endzeitbegins.nifi.flowovertcp.internal.codec.send.toByteRepresentation
+import org.apache.nifi.processor.util.listen.AbstractListenEventProcessor.REL_SUCCESS
 import org.apache.nifi.processor.util.listen.ListenerProperties
 import org.apache.nifi.remote.io.socket.NetworkUtils
 import org.junit.jupiter.api.Test

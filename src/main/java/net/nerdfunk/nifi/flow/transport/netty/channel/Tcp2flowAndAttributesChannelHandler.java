@@ -5,12 +5,12 @@ import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.SimpleChannelInboundHandler;
 import net.nerdfunk.nifi.flow.transport.message.FlowMessage;
 import net.nerdfunk.nifi.flow.transport.tcp2flow.Tcp2flowConfiguration;
-import org.apache.commons.net.util.SubnetUtils;
 import org.apache.nifi.flowfile.FlowFile;
 import org.apache.nifi.logging.ComponentLog;
 import org.apache.nifi.processor.ProcessSession;
 import org.apache.nifi.processor.ProcessSessionFactory;
 import org.apache.nifi.processor.Relationship;
+import org.jetbrains.annotations.NotNull;
 
 import java.io.IOException;
 import java.io.OutputStream;
@@ -32,103 +32,42 @@ public class Tcp2flowAndAttributesChannelHandler extends SimpleChannelInboundHan
     private OutputStream flowFileOutputStream;
     private FlowFile flowFile;
     private boolean haveActiveSession = false;
-    private String ipfilterlist;
     private boolean addIpAndPort;
-    private String myIpAddress;
-    private String receiverIpAddress;
-    private int myPort;
 
-    /**
-     * Tcp2flowReceiverHandler
-     * 
-     * @param tcp2flowconfiguration 
-     */
-    public Tcp2flowAndAttributesChannelHandler(Tcp2flowConfiguration tcp2flowconfiguration) {
+    public Tcp2flowAndAttributesChannelHandler(Tcp2flowConfiguration tcp2flowconfiguration,
+                                               boolean addIpAndPort,
+                                               ComponentLog logger) {
         super();
         this.sessionFactory = tcp2flowconfiguration.getProcessSessionFactory();
         this.sessionFactorySetSignal = tcp2flowconfiguration.getSessionFactorySetSignal();
+
         this.relationshipSuccess = tcp2flowconfiguration.getRelationshipSuccess();
-        this.logger = tcp2flowconfiguration.getLogger();
+        this.addIpAndPort = addIpAndPort;
+        this.logger = logger;
+
         this.processSession = null;
         this.flowFile = null;
-        this.ipfilterlist = tcp2flowconfiguration.getIpFilterlist();
-        this.myIpAddress = tcp2flowconfiguration.getBindAddress() == null ? "127.0.0.1" : tcp2flowconfiguration.getBindAddress().getHostAddress();
-        this.myPort = tcp2flowconfiguration.getPort();
-        this.addIpAndPort = tcp2flowconfiguration.getAddIpAndPort();
-        this.receiverIpAddress = "";
     }
 
-    /**
-     * channelActive is called to create a new flow
-     * 
-     * @param context 
-     */
     @Override
-    public void channelActive(ChannelHandlerContext context) {
-
-        // store localAddress for later use
-        this.receiverIpAddress = ((InetSocketAddress )context.channel().localAddress()).getAddress().getHostAddress();
-
-        boolean matches = false;
-        if (this.ipfilterlist == null) {
-            this.ipfilterlist = "0.0.0.0/0";
-        }
-
-        // parse IP Filter list to check if source host is valid
+    public void channelActive(@NotNull ChannelHandlerContext context) {
         try {
-            String host = ((InetSocketAddress )context.channel().remoteAddress()).getAddress().getHostAddress();
-            SubnetUtils utils;
-            String [] list = this.ipfilterlist.split(",");
-            for (String cidr : list) {
-                if (cidr.contains("/")) {
-                    utils = new SubnetUtils(cidr);
-                    boolean isInRange = utils.getInfo().isInRange(host);
-                    if (isInRange) {
-                        matches = true;
-                    }
-                }
-                else {
-                    if (host.equals(cidr)) {
-                        matches = true;
-                    }
-                }
-            }
-        } catch (Exception e) {
-            logger.error("got exception while paring the IP Filter List" + e);
-        }
-        
-        try {
-            if (matches) {
-                logger.debug("got connection from host " + ((InetSocketAddress )context.channel().remoteAddress()).getAddress().getHostAddress());
-                newFlow();
-            } else {
-                logger.info("got connection from forbidden host " + ((InetSocketAddress )context.channel().remoteAddress()).getAddress().getHostAddress());
-                context.close();
-            }
+            logger.debug("got connection from host " + ((InetSocketAddress) context.channel().remoteAddress()).getAddress().getHostAddress());
+            newFlow();
         } catch (Exception e) {
             logger.error("got exception while creating new flow " + e);
         }
     }
 
-    /**
-     * channelInactive called when sender closes connection
-     * 
-     * @param context
-     * @throws Exception 
-     */
     @Override
-    public void channelInactive(ChannelHandlerContext context) throws Exception {
+    public void channelInactive(@NotNull ChannelHandlerContext context) throws Exception {
         if (this.haveActiveSession) {
             this.flowFileOutputStream.close();
-            sendFlow(null);
+
+            sendFlow(null, context);
         }
     }
 
-    /**
-     * newFlow creates a new flow
-     * 
-     * @throws Exception 
-     */
     protected void newFlow() throws Exception {
         try {
             this.processSession = createProcessSession();
@@ -142,14 +81,7 @@ public class Tcp2flowAndAttributesChannelHandler extends SimpleChannelInboundHan
         this.flowFileOutputStream = processSession.write(flowFile);
     }
 
-    /**
-     * sendFlow parses json header (if present), sets attributes and 
-     * sends it to the next processor
-     * 
-     * @param header
-     * @throws java.lang.Exception 
-     */
-    protected void sendFlow(byte[] header) throws java.lang.Exception {
+    protected void sendFlow(byte[] header, ChannelHandlerContext context) throws java.lang.Exception {
         try {
             // check if header is not null (includes json)
             if (header != null) {
@@ -171,15 +103,19 @@ public class Tcp2flowAndAttributesChannelHandler extends SimpleChannelInboundHan
 
                 // write IP address and port if user wants it
                 if (this.addIpAndPort) {
-                    this.flowFile = processSession.putAttribute(this.flowFile, "tcp.sender", this.receiverIpAddress);
-                    this.flowFile = processSession.putAttribute(this.flowFile, "tcp.receiver", myIpAddress);
-                    this.flowFile = processSession.putAttribute(this.flowFile, "tcp.receiver_port", Integer.toString(myPort));
+                    // todo safe cast using kotlin ...
+                    InetSocketAddress senderAddress = (InetSocketAddress) context.channel().remoteAddress();
+                    InetSocketAddress receiverAddress = (InetSocketAddress) context.channel().localAddress();
+
+                    // TODO use putAttrbiutes
+                    this.flowFile = processSession.putAttribute(this.flowFile, "tcp.sender", senderAddress.getAddress().getHostAddress());
+                    this.flowFile = processSession.putAttribute(this.flowFile, "tcp.receiver", receiverAddress.getAddress().getHostAddress());
+                    this.flowFile = processSession.putAttribute(this.flowFile, "tcp.receiver_port", receiverAddress.getPort() + "");
                 }
             }
             processSession.getProvenanceReporter().modifyContent(this.flowFile);
             processSession.transfer(this.flowFile, relationshipSuccess);
-//            processSession.commit(); // TODO
-            processSession.commitAsync(); // TODO was without async first ..
+            processSession.commitAsync();
             this.processSession = null;
             this.haveActiveSession = false;
             logger.info("flowfile received successfully and transmitted to next processor");
@@ -190,27 +126,8 @@ public class Tcp2flowAndAttributesChannelHandler extends SimpleChannelInboundHan
         }
     }
 
-    /**
-     * channelRead0 called if we got a message from the other side
-     * we are sending data only. So this message is never called
-     * 
-     * @param ctx
-     * @param msg
-     * @throws Exception 
-     */
     @Override
     public void channelRead0(ChannelHandlerContext ctx, FlowMessage msg) throws Exception {
-    }
-
-    /**
-     * channelRead gets Tcp2flowMessage message and writes it to the flowfile
-     * 
-     * @param context
-     * @param msg
-     * @throws Exception 
-     */
-    @Override
-    public void channelRead(ChannelHandlerContext context, Object msg) throws Exception {
         /*
          * check if we have an active session
          * if not than create one
@@ -219,35 +136,24 @@ public class Tcp2flowAndAttributesChannelHandler extends SimpleChannelInboundHan
             newFlow();
         }
 
-        /*
-         * check if we have a Tcp2flowMessage object
-         */
-        if (msg instanceof FlowMessage) {
-            FlowMessage tmsg = (FlowMessage) msg;
+        // if payload != null write incoming data to flow
+        if (msg.getPayload() != null) {
+            flowFileOutputStream.write(msg.getPayload());
+        }
 
-            // if payload != null write incoming data to flow
-            if (tmsg.getPayload() != null) {
-                flowFileOutputStream.write(tmsg.getPayload());
-            }
-
-            if (tmsg.isLastMessage()) {
-                // close output stream, we do not need it anymore
-                this.flowFileOutputStream.close();
-                sendFlow(tmsg.getHeader());
-            }
-        } else {
-            this.logger.error("got an unknown message");
+        if (msg.isLastMessage()) {
+            // close output stream, we do not need it anymore
             this.flowFileOutputStream.close();
-            processSession.rollback();
+            sendFlow(msg.getHeader(), ctx);
         }
     }
 
     /**
      * createProcessSession to init a new flowfile and write content to it
-     * 
+     *
      * @return ProcessSession
      * @throws InterruptedException
-     * @throws TimeoutException 
+     * @throws TimeoutException
      */
     private ProcessSession createProcessSession() throws InterruptedException, TimeoutException {
         ProcessSessionFactory processSessionFactory = getProcessSessionFactory();
@@ -256,10 +162,10 @@ public class Tcp2flowAndAttributesChannelHandler extends SimpleChannelInboundHan
 
     /**
      * getProcessSessionFactory
-     * 
+     *
      * @return ProcessSessionFactory
      * @throws InterruptedException
-     * @throws TimeoutException 
+     * @throws TimeoutException
      */
     private ProcessSessionFactory getProcessSessionFactory() throws InterruptedException, TimeoutException {
         if (sessionFactorySetSignal.await(10000, TimeUnit.MILLISECONDS)) {
