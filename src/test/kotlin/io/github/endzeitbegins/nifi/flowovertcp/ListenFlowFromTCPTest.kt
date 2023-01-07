@@ -127,9 +127,9 @@ class ListenFlowFromTCPTest {
         tcpClient.send(payload)
         testRunner.run(1, false, false)
 
-        // todo remove ---
-        Thread.sleep(10_000)
-        // todo remove ---
+//        // todo remove ---
+//        Thread.sleep(10_000)
+//        // todo remove ---
 
         testRunner.assertAllFlowFilesTransferred(REL_SUCCESS, 1)
         val flowFile = testRunner.getFlowFilesForRelationship(REL_SUCCESS).single()

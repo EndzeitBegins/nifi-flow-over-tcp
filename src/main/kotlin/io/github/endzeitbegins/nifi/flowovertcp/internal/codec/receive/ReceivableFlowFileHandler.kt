@@ -7,6 +7,7 @@ import org.apache.nifi.logging.ComponentLog
 import org.apache.nifi.processor.ProcessSession
 import org.apache.nifi.processor.ProcessSessionFactory
 import org.apache.nifi.processor.Relationship
+import java.io.OutputStream
 import java.net.InetSocketAddress
 import java.time.Duration
 import java.time.Instant
@@ -26,6 +27,7 @@ internal class ReceivableFlowFileHandler(
     private var activeId: String? = null
     private lateinit var session: ProcessSession
     private lateinit var flowFile: FlowFile
+    private lateinit var contentStream: OutputStream
 
     // todo remove ---
     private val start = Instant.now()
@@ -39,17 +41,20 @@ internal class ReceivableFlowFileHandler(
             activeId = event.generatedId
             session = claimProcessSession()
             flowFile = session.create()
+            contentStream = session.write(flowFile)
         }
 
-        flowFile = when (event) {
+        when (event) {
             is ReceivableFlowFileAttributes -> {
-                session.putAllAttributes(flowFile, event.attributes)
+                flowFile = session.putAllAttributes(flowFile, event.attributes)
             }
 
             is ReceivableFlowFileContentFragment -> {
-                session.append(flowFile) { outputStream ->
-                    outputStream.write(event.payload)
-                }
+                contentStream.write(event.payload)
+
+//                session.append(flowFile) { outputStream ->
+//                    outputStream.write(event.payload)
+//                }
             }
         }
 
@@ -61,11 +66,11 @@ internal class ReceivableFlowFileHandler(
         // todo remove ---
 
         if (event.isLastFragment) {
-            if (addNetworkInformationAttributes) {
-                val channel = context.channel()
-                val senderAddress = channel.remoteAddress() as? InetSocketAddress
-                val receiverAddress = channel.localAddress() as? InetSocketAddress
+            val channel = context.channel()
+            val senderAddress = channel.remoteAddress() as? InetSocketAddress
+            val receiverAddress = channel.localAddress() as? InetSocketAddress
 
+            if (addNetworkInformationAttributes) {
                 val networkInformationAttributes = buildMap {
                     if (senderAddress != null) {
                         put("tcp.sender", senderAddress.address.hostAddress)
@@ -79,6 +84,10 @@ internal class ReceivableFlowFileHandler(
                 flowFile = session.putAllAttributes(flowFile, networkInformationAttributes)
             }
 
+            contentStream.close()
+
+            // todo nullability?!
+            session.provenanceReporter.receive(flowFile, "tcp://${senderAddress!!.hostString}:${senderAddress!!.port}")
             session.transfer(flowFile, targetRelationship)
             session.commitAsync()
 
