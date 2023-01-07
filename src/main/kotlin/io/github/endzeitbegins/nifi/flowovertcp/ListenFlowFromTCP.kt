@@ -1,7 +1,11 @@
 package io.github.endzeitbegins.nifi.flowovertcp
 
-import net.nerdfunk.nifi.flow.transport.tcp2flow.Tcp2flow
-import net.nerdfunk.nifi.flow.transport.tcp2flow.Tcp2flowConfiguration
+import io.github.endzeitbegins.nifi.flowovertcp.internal.codec.receive.ReceivableFlowFileServerFactory
+import io.github.endzeitbegins.nifi.flowovertcp.internal.listen.*
+import io.github.endzeitbegins.nifi.flowovertcp.internal.listen.bufferAllocator
+import io.github.endzeitbegins.nifi.flowovertcp.internal.listen.idleTimeout
+import io.github.endzeitbegins.nifi.flowovertcp.internal.listen.socketBufferSize
+import io.github.endzeitbegins.nifi.flowovertcp.internal.listen.workerThreads
 import org.apache.nifi.annotation.behavior.InputRequirement
 import org.apache.nifi.annotation.behavior.WritesAttribute
 import org.apache.nifi.annotation.behavior.WritesAttributes
@@ -11,23 +15,25 @@ import org.apache.nifi.annotation.documentation.Tags
 import org.apache.nifi.annotation.lifecycle.OnScheduled
 import org.apache.nifi.annotation.lifecycle.OnStopped
 import org.apache.nifi.components.PropertyDescriptor
+import org.apache.nifi.event.transport.EventException
+import org.apache.nifi.event.transport.EventServer
+import org.apache.nifi.event.transport.configuration.TransportProtocol
+import org.apache.nifi.event.transport.netty.NettyEventServerFactory
 import org.apache.nifi.expression.ExpressionLanguageScope
 import org.apache.nifi.processor.AbstractSessionFactoryProcessor
 import org.apache.nifi.processor.ProcessContext
 import org.apache.nifi.processor.ProcessSessionFactory
 import org.apache.nifi.processor.Relationship
-import org.apache.nifi.processor.exception.ProcessException
 import org.apache.nifi.processor.util.StandardValidators
 import org.apache.nifi.processor.util.listen.AbstractListenEventProcessor
 import org.apache.nifi.processor.util.listen.ListenerProperties
-import org.apache.nifi.remote.io.socket.NetworkUtils
 import org.apache.nifi.security.util.ClientAuth
 import org.apache.nifi.ssl.RestrictedSSLContextService
 import org.apache.nifi.ssl.SSLContextService
-import java.net.InetAddress
-import java.net.UnknownHostException
+import java.util.concurrent.atomic.AtomicReference
 
-private const val addIpAndPortAttributesName = "Add IP and port"
+
+private const val addNetworkInformationAttributesName = "Add IP and port information to attributes"
 
 @CapabilityDescription(
     """The ListenFlowFromTCP processor listens for incoming TCP connections and creates FlowFiles from each connection. 
@@ -36,41 +42,29 @@ private const val addIpAndPortAttributesName = "Add IP and port"
 )
 @InputRequirement(InputRequirement.Requirement.INPUT_FORBIDDEN)
 @WritesAttributes(
-    WritesAttribute(attribute = "tcp.sender", description = """IP address of the sending host. Attribute is only written, when "$addIpAndPortAttributesName" is enabled."""),
-    WritesAttribute(attribute = "tcp.receiver", description = """IP address of the target host. Attribute is only written, when "$addIpAndPortAttributesName" is enabled."""),
-    WritesAttribute(attribute = "tcp.receiver_port", description = """Port on the target host. Attribute is only written, when "$addIpAndPortAttributesName" is enabled."""),
+    WritesAttribute(
+        attribute = "tcp.sender",
+        description = """IP address of the sending host. Attribute is only written, when "$addNetworkInformationAttributesName" is enabled."""
+    ),
+    WritesAttribute(
+        attribute = "tcp.receiver",
+        description = """IP address of the target host. Attribute is only written, when "$addNetworkInformationAttributesName" is enabled."""
+    ),
+    WritesAttribute(
+        attribute = "tcp.receiver_port",
+        description = """Port on the target host. Attribute is only written, when "$addNetworkInformationAttributesName" is enabled."""
+    ),
 )
 @SeeAlso(PutFlowToTCP::class)
 @Tags("listen", "tcp", "ingress", "flow", "content", "attribute", "diode", "tls", "ssl")
 public class ListenFlowFromTCP : AbstractSessionFactoryProcessor() {
 
     public companion object {
-        public val IPFILTERLIST: PropertyDescriptor = PropertyDescriptor.Builder()
-            .name("ip-filter-list")
-            .displayName("IP Filter")
-            .description(
-                """Allow connections only from specified addresses.Uses cidr notation to allow hosts. 
-                    |If empty, all connections are allowed.""".trimMargin()
-            )
-            .required(false)
-            .expressionLanguageSupported(ExpressionLanguageScope.VARIABLE_REGISTRY)
-            .addValidator(StandardValidators.NON_BLANK_VALIDATOR)
-            .build()
-
-        public val READER_IDLE_TIME: PropertyDescriptor = PropertyDescriptor.Builder()
-            .name("Reader idle Timer")
-            .description("The amount of time in seconds a connection should be held open without being read.")
-            .required(true)
-            .defaultValue("5")
-            .expressionLanguageSupported(ExpressionLanguageScope.VARIABLE_REGISTRY)
-            .addValidator(StandardValidators.INTEGER_VALIDATOR)
-            .build()
-
         public val SSL_CONTEXT_SERVICE: PropertyDescriptor = PropertyDescriptor.Builder()
             .name("SSL Context Service")
             .description(
-                """The Controller Service to use in order to obtain an SSL Context. 
-                    |If this property is set, messages will be received over a secure connection.""".trimMargin()
+                "The Controller Service to use in order to obtain an SSL Context. If this property is set, " +
+                        "messages will be received over a secure connection."
             )
             .required(false)
             .identifiesControllerService(RestrictedSSLContextService::class.java)
@@ -78,140 +72,129 @@ public class ListenFlowFromTCP : AbstractSessionFactoryProcessor() {
 
         public val CLIENT_AUTH: PropertyDescriptor = PropertyDescriptor.Builder()
             .name("Client Auth")
-            .displayName("Client Auth")
-            .description("""The client authentication policy to use for the SSL Context. 
-                |Only used if an SSL Context Service is provided.""".trimMargin())
+            .description("The client authentication policy to use for the SSL Context. Only used if an SSL Context Service is provided.")
             .required(false)
             .allowableValues(ClientAuth.values())
             .defaultValue(ClientAuth.REQUIRED.name)
             .dependsOn(SSL_CONTEXT_SERVICE)
             .build()
 
-        public val ADD_IP_AND_PORT_TO_ATTRIBUTE: PropertyDescriptor = PropertyDescriptor.Builder()
+        public val POOL_RECV_BUFFERS: PropertyDescriptor = PropertyDescriptor.Builder()
+            .name("pool-receive-buffers")
+            .displayName("Pool Receive Buffers")
+            .description("Enable or disable pooling of buffers that the processor uses for handling bytes received on socket connections. The framework allocates buffers as needed during processing.")
+            .required(true)
+            .defaultValue("True")
+            .allowableValues("True", "False")
+            .addValidator(StandardValidators.BOOLEAN_VALIDATOR)
+            .build()
+
+        public val IDLE_CONNECTION_TIMEOUT: PropertyDescriptor = PropertyDescriptor.Builder()
+            .name("idle-timeout")
+            .displayName("Idle Connection Timeout")
+            .description("The amount of time a client's connection will remain open if no data is received. The default of 0 seconds will leave connections open until they are closed by the client.")
+            .required(true)
+            .defaultValue("0 seconds")
+            .addValidator(StandardValidators.TIME_PERIOD_VALIDATOR)
+            .build()
+
+        public val ADD_NETWORK_INFORMATION_ATTRIBUTES: PropertyDescriptor = PropertyDescriptor.Builder()
             .name("add-attributes-ip-port")
-            .displayName(addIpAndPortAttributesName)
+            .displayName(addNetworkInformationAttributesName)
             .description(
-                """If set to true the listening IP address, the sender IP address and the listening TCP port are added to the attributes."""
+                """If set to true the IP address and port of listener and sender are added to the attributes."""
             )
             .required(true)
             .defaultValue("false")
             .expressionLanguageSupported(ExpressionLanguageScope.NONE)
             .allowableValues("true", "false")
             .build()
-
-        public val REL_SUCCESS: Relationship = Relationship.Builder()
-            .name("success")
-            .description("Relationship for successfully received files.")
-            .build()
-
-        public val REL_FAILURE: Relationship = Relationship.Builder()
-            .name("error")
-            .description("Relationship if an error occurred.")
-            .build()
     }
 
-    private val relationships: Set<Relationship> = setOf(AbstractListenEventProcessor.REL_SUCCESS, REL_FAILURE)
+    private val relationships: Set<Relationship> = setOf(AbstractListenEventProcessor.REL_SUCCESS)
 
     private val descriptors: List<PropertyDescriptor> = listOf(
         ListenerProperties.NETWORK_INTF_NAME,
         ListenerProperties.PORT,
-        IPFILTERLIST,
-        READER_IDLE_TIME,
+        ADD_NETWORK_INFORMATION_ATTRIBUTES,
+
+        // TODO Use event passing
+        //  - could be a solution to https://github.com/EndzeitBegins/nifi-flow-over-tcp/issues/15 as well
+        //  ListenerProperties.MAX_MESSAGE_QUEUE_SIZE,
+
+        ListenerProperties.MAX_SOCKET_BUFFER_SIZE,
+        ListenerProperties.WORKER_THREADS,
+        IDLE_CONNECTION_TIMEOUT,
+        POOL_RECV_BUFFERS,
         SSL_CONTEXT_SERVICE,
         CLIENT_AUTH,
-        ADD_IP_AND_PORT_TO_ATTRIBUTE
     )
 
     override fun getRelationships(): Set<Relationship> = relationships
 
     override fun getSupportedPropertyDescriptors(): List<PropertyDescriptor> = descriptors
 
+    @Volatile
+    private var eventServer: EventServer? = null
+    private val sessionFactoryReference: AtomicReference<ProcessSessionFactory> = AtomicReference()
 
-    private var tcp2flow: Tcp2flow? = null
-    private var tcp2flowconfiguration: Tcp2flowConfiguration? = null
+    @OnScheduled
+    public fun onScheduled(context: ProcessContext) {
+        val address = context.address
+        val port = context.port
 
-    /**
-     * Triggers the processor but does nothing fancy
-     *
-     * @param context        the ProcessContext
-     * @param sessionFactory the session Factory
-     * @throws ProcessException if something went wrong
-     */
-    @Throws(ProcessException::class)
-    override fun onTrigger(context: ProcessContext, sessionFactory: ProcessSessionFactory) {
-        if (tcp2flowconfiguration!!.sessionFactoryCompareAndSet(null, sessionFactory)) {
-            tcp2flowconfiguration!!.sessionFactorySetSignalCountDown()
+        // TODO Use event passing
+        //  - could be a solution to https://github.com/EndzeitBegins/nifi-flow-over-tcp/issues/15 as well
+//        val eventsCapacity = context.getProperty(ListenerProperties.MAX_MESSAGE_QUEUE_SIZE).asInteger()
+//        events = TrackingLinkedBlockingQueue(eventsCapacity)
+//        errorEvents = LinkedBlockingQueue()
+
+        val eventFactory: NettyEventServerFactory = ReceivableFlowFileServerFactory(
+            address = address,
+            port = port,
+            protocol = TransportProtocol.TCP,
+
+            addNetworkInformationAttributes = context.addNetworkInformationAttributes,
+            processSessionFactoryReference = sessionFactoryReference,
+            targetRelationship = AbstractListenEventProcessor.REL_SUCCESS,
+
+            logger = logger,
+        )
+
+        val sslContextService: SSLContextService? = context.sslContextServiceOrNull()
+        if (sslContextService != null) {
+            eventFactory.setSslContext(sslContextService.createContext())
+            eventFactory.setClientAuth(context.clientAuth)
         }
+
+        eventFactory.setBufferAllocator(context.bufferAllocator)
+        eventFactory.setIdleTimeout(context.idleTimeout)
+        eventFactory.setSocketReceiveBuffer(context.socketBufferSize)
+        eventFactory.setWorkerThreads(context.workerThreads)
+        eventFactory.setThreadNamePrefix(String.format("%s[%s]", javaClass.simpleName, identifier))
+
+        try {
+            eventServer = eventFactory.eventServer
+        } catch (e: EventException) {
+            logger.error("Failed to bind to [{}:{}]", address, port, e)
+        }
+    }
+
+
+    override fun onTrigger(context: ProcessContext, sessionFactory: ProcessSessionFactory) {
+        // TODO Use event passing
+        //  - could be a solution to https://github.com/EndzeitBegins/nifi-flow-over-tcp/issues/15 as well
+
+        sessionFactoryReference.set(sessionFactory)
+
         context.yield()
     }
 
-    /**
-     * Starts the TCPServer to receive flowfiles over the network
-     *
-     * @param context the ProcessContext
-     */
-    @OnScheduled
-    public fun startServer(context: ProcessContext) {
-        if (tcp2flow == null) {
-            val networkInterface =
-                context.getProperty(ListenerProperties.NETWORK_INTF_NAME).evaluateAttributeExpressions().value
-            val address: InetAddress? = NetworkUtils.getInterfaceAddress(networkInterface)
-            val ipFilterList = context.getProperty(IPFILTERLIST).evaluateAttributeExpressions().value
-            val port = context.getProperty(ListenerProperties.PORT).evaluateAttributeExpressions().asInteger()
-            val readerIdleTimeout = context.getProperty(READER_IDLE_TIME).evaluateAttributeExpressions().asInteger()
-            val sslContextService = context.getProperty(SSL_CONTEXT_SERVICE).asControllerService(
-                SSLContextService::class.java
-            )
-            val writeIpAndPort = context.getProperty(ADD_IP_AND_PORT_TO_ATTRIBUTE).asBoolean()
-            var clientAuth = ClientAuth.REQUIRED
-            val clientAuthProperty = context.getProperty(CLIENT_AUTH)
-            if (clientAuthProperty.isSet) {
-                clientAuth = ClientAuth.valueOf(clientAuthProperty.value)
-            }
-            try {
-                tcp2flowconfiguration = Tcp2flowConfiguration(
-                    address,
-                    port,
-                    readerIdleTimeout,
-                    ipFilterList,
-                    sslContextService,
-                    writeIpAndPort,
-                    REL_SUCCESS,
-                    REL_FAILURE,
-                    logger
-                )
-                tcp2flow = Tcp2flow.Builder()
-                    .Tcp2flowConfiguration(tcp2flowconfiguration)
-                    .build()
-                tcp2flow!!.start(clientAuth)
-            } catch (processException: ProcessException) {
-                logger.error(processException.message, processException)
-                stopServer()
-                throw processException
-            } catch (ukh: UnknownHostException) {
-                logger.error(ukh.message, ukh)
-                stopServer()
-            } catch (e: Exception) {
-                logger.error(e.message, e)
-            }
-        } else {
-            logger.warn("TCP server already started.")
-        }
-    }
-
-    /**
-     * Stops the TCPServer to receive flowfiles over the network
-     */
     @OnStopped
-    public fun stopServer() {
-        try {
-            if (tcp2flow != null && !tcp2flow!!.isStopped) {
-                tcp2flow!!.stop()
-            }
-            tcp2flow = null
-            tcp2flowconfiguration!!.setSessionFactory(null)
-        } catch (e: Exception) {
-            logger.error(e.message, e)
-        }
+    public fun stopped() {
+        eventServer?.shutdown()
+        eventServer = null
+
+        sessionFactoryReference.set(null)
     }
 }
