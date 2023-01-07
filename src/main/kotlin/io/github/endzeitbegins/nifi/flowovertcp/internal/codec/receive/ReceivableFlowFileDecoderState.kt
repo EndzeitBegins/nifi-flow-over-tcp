@@ -34,11 +34,16 @@ internal sealed interface ReceivableFlowFileDecoderState {
         override val attributesLength: Int,
         override val contentLength: Long,
     ) : KnowsAttributesLength, KnowsContentLength, ReceivableFlowFileDecoderState {
-        fun transform(contentBytesReceived: Long) = ParseContent(
-            generatedId = generatedId,
-            contentLength = contentLength,
-            contentBytesReceived = contentBytesReceived
-        )
+        fun transform() = if (contentLength > 0) {
+            ParseContent(
+                generatedId = generatedId,
+                contentLength = contentLength,
+                contentBytesReceived = 0
+            )
+        } else {
+            // the FlowFile has no content to read, start reading the next FlowFile
+            ParseAttributesLength()
+        }
     }
 
     data class ParseContent(

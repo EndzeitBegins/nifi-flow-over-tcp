@@ -74,22 +74,25 @@ internal class ReceivableFlowFileDecoder(
         currentState: ReceivableFlowFileDecoderState.ParseAttributes,
         out: MutableList<Any>
     ): ReceivableFlowFileDecoderState {
-        markReaderIndex()
-        val attributeBytes = ByteArray(currentState.attributesLength)
-        readBytes(attributeBytes)
+        if (currentState.attributesLength > 0) {
+            markReaderIndex()
+            val attributeBytes = ByteArray(currentState.attributesLength)
+            readBytes(attributeBytes)
 
-        val attributesJson = attributeBytes.decodeToString()
-        val attributes: Map<String, String> = ObjectMapper().readValue(attributesJson)
+            val attributesJson = attributeBytes.decodeToString()
+            val attributes: Map<String, String> = ObjectMapper().readValue(attributesJson)
 
-        logger.debug("Parsed attributes: $attributes")
+            logger.debug("Parsed attributes: $attributes")
 
-        val event = ReceivableFlowFileAttributes(
-            generatedId = currentState.generatedId,
-            attributes = attributes,
-        )
-        out.add(event)
+            val event = ReceivableFlowFileAttributes(
+                generatedId = currentState.generatedId,
+                attributes = attributes,
+                isLastFragment = currentState.contentLength <= 0
+            )
+            out.add(event)
+        }
 
-        return currentState.transform(contentBytesReceived = 0)
+        return currentState.transform()
     }
 
     private fun ByteBuf.parseContent(
@@ -107,9 +110,13 @@ internal class ReceivableFlowFileDecoder(
 
         logger.debug("Parsed content fragment of $contentBytesToRead bytes.")
 
+        // todo remove ---
+//        logger.warn("Parsed $contentBytesToRead bytes; missing: ${missingContentBytes}.")
+        // todo remove ---
+
         val event = ReceivableFlowFileContentFragment(
             generatedId = currentState.generatedId,
-            payload = contentFragmentBytes.asList(),
+            payload = contentFragmentBytes,
             isLastFragment = contentBytesToRead >= missingContentBytes,
         )
         out.add(event)

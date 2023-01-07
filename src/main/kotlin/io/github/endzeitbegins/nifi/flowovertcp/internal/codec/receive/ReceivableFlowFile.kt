@@ -9,21 +9,24 @@ import org.apache.nifi.flowfile.FlowFile
  */
 internal sealed interface ReceivableFlowFile {
     val generatedId: String
+
+    val isLastFragment: Boolean
 }
 
 /**
  * TODO
  */
-internal data class ReceivableFlowFileAttributes(
+internal class ReceivableFlowFileAttributes(
     override val generatedId: String,
     val attributes: Map<String, String>,
+    override val isLastFragment: Boolean,
 ) : ReceivableFlowFile
 
 /**
  * TODO
  */
-internal data class ReceivableFlowFileContentFragment(
+internal class ReceivableFlowFileContentFragment(
     override val generatedId: String,
-    val payload: List<Byte>,
-    val isLastFragment: Boolean,
+    val payload: ByteArray,
+    override val isLastFragment: Boolean,
 ) : ReceivableFlowFile
