@@ -3,12 +3,17 @@ package io.github.endzeitbegins.nifi.flowovertcp.internal.codec.receive
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.module.kotlin.readValue
 import io.netty.buffer.ByteBuf
+import io.netty.channel.ChannelHandler
 import io.netty.channel.ChannelHandlerContext
 import io.netty.handler.codec.ByteToMessageDecoder
+import io.netty.handler.stream.ChunkedWriteHandler
+import org.apache.nifi.flowfile.FlowFile
 import org.apache.nifi.logging.ComponentLog
 
 /**
- * TODO
+ * A custom [ChannelHandler] that converts the received bytes into [ReceivableFlowFile] objects.
+ *
+ * Use in conjunction with [ReceivableFlowFileHandler] to receives [FlowFile]s with arbitrary large content.
  */
 internal class ReceivableFlowFileDecoder(
     private val logger: ComponentLog,
@@ -109,10 +114,6 @@ internal class ReceivableFlowFileDecoder(
         readBytes(contentFragmentBytes)
 
         logger.debug("Parsed content fragment of $contentBytesToRead bytes.")
-
-        // todo remove ---
-//        logger.warn("Parsed $contentBytesToRead bytes; missing: ${missingContentBytes}.")
-        // todo remove ---
 
         val event = ReceivableFlowFileContentFragment(
             generatedId = currentState.generatedId,

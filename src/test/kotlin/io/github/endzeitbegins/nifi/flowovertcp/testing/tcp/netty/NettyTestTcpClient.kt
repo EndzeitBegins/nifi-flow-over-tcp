@@ -17,7 +17,7 @@ internal class NettyTestTcpClient(
         ByteArrayNettyEventSenderFactory(MockComponentLogger(), hostname, port, TransportProtocol.TCP).apply {
             setShutdownQuietPeriod(ShutdownQuietPeriod.QUICK.duration)
             setShutdownTimeout(ShutdownTimeout.QUICK.duration)
-            setTimeout(Duration.ofSeconds(30)) // todo
+            setTimeout(Duration.ofSeconds(5))
         }
 
     override fun send(payload: ByteArray) {

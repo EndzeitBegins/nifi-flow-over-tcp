@@ -9,12 +9,12 @@ import org.apache.nifi.processor.ProcessSessionFactory
 import org.apache.nifi.processor.Relationship
 import java.io.OutputStream
 import java.net.InetSocketAddress
-import java.time.Duration
-import java.time.Instant
 import java.util.concurrent.atomic.AtomicReference
 
 /**
  * TODO
+ *  Add documentation
+ *  Refactor to use event passing, move session handling to onTrigger
  */
 internal class ReceivableFlowFileHandler(
     private val addNetworkInformationAttributes: Boolean,
@@ -23,24 +23,18 @@ internal class ReceivableFlowFileHandler(
     private val logger: ComponentLog
 ) : SimpleChannelInboundHandler<ReceivableFlowFile>() {
 
-    // todo combine?
     private var activeId: String? = null
     private lateinit var session: ProcessSession
     private lateinit var flowFile: FlowFile
     private var contentStream: OutputStream? = null
 
-    // todo remove ---
-    private val start = Instant.now()
-//    private var n = 0
-    // todo remove ---
-
     override fun channelRead0(context: ChannelHandlerContext, event: ReceivableFlowFile) {
         if (activeId != event.generatedId) {
-            // todo discard old?
-
             activeId = event.generatedId
             session = claimProcessSession()
             flowFile = session.create()
+
+            contentStream?.close()
             contentStream = null
         }
 
@@ -53,23 +47,11 @@ internal class ReceivableFlowFileHandler(
             }
 
             is ReceivableFlowFileContentFragment -> {
-                val x: OutputStream = contentStream ?: session.write(flowFile)
-                x.write(event.payload)
-
-                contentStream = x
-
-//                session.append(flowFile) { outputStream ->
-//                    outputStream.write(event.payload)
-//                }
+                contentStream = (contentStream ?: session.write(flowFile)).also { outputStream ->
+                    outputStream.write(event.payload)
+                }
             }
         }
-
-        // todo remove ---
-//        n++
-//        if (n > 100) {
-//            logger.warn("got here! + ${event.isLastFragment}")
-//        }
-        // todo remove ---
 
         if (event.isLastFragment) {
             val channel = context.channel()
@@ -93,20 +75,10 @@ internal class ReceivableFlowFileHandler(
             contentStream?.close()
             contentStream = null
 
-            // todo nullability?!
-            session.provenanceReporter.receive(flowFile, "tcp://${senderAddress!!.hostString}:${senderAddress!!.port}")
+            session.provenanceReporter.receive(flowFile, senderAddress?.toTransitUri() ?: "unknown")
             session.transfer(flowFile, targetRelationship)
             session.commitAsync()
-
-            // todo remove ---
-//            println("Took ${Duration.between(start, Instant.now()).toMillis()}ms!")
-            // todo remove ---
         }
-
-        // TODO
-        //  first iteration, implement session handling in here, similar to Tcp2flowAndAttributesChannelHandler
-        //  second iteration, only offer events to a blockingqueue, similar to listentcp;
-        //    & handle events in ontrigger of processor
     }
 
     private fun claimProcessSession(): ProcessSession {
@@ -121,5 +93,9 @@ internal class ReceivableFlowFileHandler(
         }
 
         return processSessionFactory
+    }
+
+    private fun InetSocketAddress.toTransitUri(): String {
+        return "tcp://${hostString}:${port}"
     }
 }

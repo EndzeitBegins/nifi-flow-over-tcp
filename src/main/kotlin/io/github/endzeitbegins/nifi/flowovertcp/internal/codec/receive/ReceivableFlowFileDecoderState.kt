@@ -3,7 +3,11 @@ package io.github.endzeitbegins.nifi.flowovertcp.internal.codec.receive
 import java.util.*
 
 /**
- * TODO
+ * The possible states any instance of [ReceivableFlowFileDecoder] can be in.
+ *
+ * The state
+ * - indicates which type of action needs to be taken, and
+ * - contains any relevant information collected so far
  */
 internal sealed interface ReceivableFlowFileDecoderState {
 

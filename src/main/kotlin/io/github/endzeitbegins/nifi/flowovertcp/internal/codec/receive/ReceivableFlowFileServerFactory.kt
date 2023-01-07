@@ -18,7 +18,9 @@ internal class ReceivableFlowFileServerFactory(
     port: Int,
     protocol: TransportProtocol,
 
-    // TODO could get rid of those, when handling "events" in onTrigger instead .. pass BlockingQueue of events instead
+    // TODO Use event passing
+    //  could get rid of those, when handling "events" in onTrigger instead
+    //  need to pass BlockingQueue of events instead
     addNetworkInformationAttributes: Boolean,
     processSessionFactoryReference: AtomicReference<ProcessSessionFactory>,
     targetRelationship: Relationship,
