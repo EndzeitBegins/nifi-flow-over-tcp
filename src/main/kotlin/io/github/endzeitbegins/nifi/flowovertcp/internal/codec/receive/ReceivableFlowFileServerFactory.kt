@@ -1,7 +1,5 @@
 package io.github.endzeitbegins.nifi.flowovertcp.internal.codec.receive
 
-import net.nerdfunk.nifi.flow.transport.netty.channel.Tcp2flowAndAttributesChannelHandler
-import net.nerdfunk.nifi.flow.transport.tcp2flow.Tcp2flowAndAttributesDecoder
 import org.apache.nifi.event.transport.configuration.TransportProtocol
 import org.apache.nifi.event.transport.netty.NettyEventServerFactory
 import org.apache.nifi.event.transport.netty.channel.LogExceptionChannelHandler
@@ -17,6 +15,7 @@ internal class ReceivableFlowFileServerFactory(
     port: Int,
     protocol: TransportProtocol,
 
+    // TODO could get rid of those, when handling "events" in onTrigger instead .. pass BlockingQueue of events instead
     addNetworkInformationAttributes: Boolean,
     processSessionFactoryReference: AtomicReference<ProcessSessionFactory>,
     targetRelationship: Relationship,
@@ -32,14 +31,25 @@ internal class ReceivableFlowFileServerFactory(
                 LogExceptionChannelHandler(logger),
 
                 /** TODO */
-                Tcp2flowAndAttributesDecoder(logger),
+                ReceivableFlowFileDecoder(logger),
                 /** TODO */
-                Tcp2flowAndAttributesChannelHandler(
+                ReceivableFlowFileHandler(
                     addNetworkInformationAttributes,
                     processSessionFactoryReference,
                     targetRelationship,
                     logger
                 ),
+
+                // todo remove old
+//                /** TODO */
+//                Tcp2flowAndAttributesDecoder(logger),
+//                /** TODO */
+//                Tcp2flowAndAttributesChannelHandler(
+//                    addNetworkInformationAttributes,
+//                    processSessionFactoryReference,
+//                    targetRelationship,
+//                    logger
+//                ),
             )
         }
     }
