@@ -27,7 +27,7 @@ internal class ReceivableFlowFileHandler(
     private var activeId: String? = null
     private lateinit var session: ProcessSession
     private lateinit var flowFile: FlowFile
-    private lateinit var contentStream: OutputStream
+    private var contentStream: OutputStream? = null
 
     // todo remove ---
     private val start = Instant.now()
@@ -41,16 +41,22 @@ internal class ReceivableFlowFileHandler(
             activeId = event.generatedId
             session = claimProcessSession()
             flowFile = session.create()
-            contentStream = session.write(flowFile)
+            contentStream = null
         }
 
         when (event) {
             is ReceivableFlowFileAttributes -> {
+                contentStream?.close()
+                contentStream = null
+
                 flowFile = session.putAllAttributes(flowFile, event.attributes)
             }
 
             is ReceivableFlowFileContentFragment -> {
-                contentStream.write(event.payload)
+                val x: OutputStream = contentStream ?: session.write(flowFile)
+                x.write(event.payload)
+
+                contentStream = x
 
 //                session.append(flowFile) { outputStream ->
 //                    outputStream.write(event.payload)
@@ -84,7 +90,8 @@ internal class ReceivableFlowFileHandler(
                 flowFile = session.putAllAttributes(flowFile, networkInformationAttributes)
             }
 
-            contentStream.close()
+            contentStream?.close()
+            contentStream = null
 
             // todo nullability?!
             session.provenanceReporter.receive(flowFile, "tcp://${senderAddress!!.hostString}:${senderAddress!!.port}")
@@ -92,7 +99,7 @@ internal class ReceivableFlowFileHandler(
             session.commitAsync()
 
             // todo remove ---
-            println("Took ${Duration.between(start, Instant.now()).toMillis()}ms!")
+//            println("Took ${Duration.between(start, Instant.now()).toMillis()}ms!")
             // todo remove ---
         }
 

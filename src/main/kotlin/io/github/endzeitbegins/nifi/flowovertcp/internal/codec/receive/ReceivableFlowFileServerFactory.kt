@@ -1,5 +1,8 @@
 package io.github.endzeitbegins.nifi.flowovertcp.internal.codec.receive
 
+import io.github.endzeitbegins.nifi.flowovertcp.internal.codec.send.TransmittableFlowFile
+import io.netty.channel.ChannelHandler
+import io.netty.handler.stream.ChunkedStream
 import org.apache.nifi.event.transport.configuration.TransportProtocol
 import org.apache.nifi.event.transport.netty.NettyEventServerFactory
 import org.apache.nifi.event.transport.netty.channel.LogExceptionChannelHandler
@@ -30,26 +33,15 @@ internal class ReceivableFlowFileServerFactory(
                  * that allows logging in the [ComponentLog] of the integrating [Processor] */
                 LogExceptionChannelHandler(logger),
 
-                /** TODO */
+                /** a custom [ChannelHandler] that converts the received bytes into [ReceivableFlowFile] objects */
                 ReceivableFlowFileDecoder(logger),
-                /** TODO */
+                /** a custom [ChannelHandler] that ... [ReceivableFlowFile] objects ... TODO */
                 ReceivableFlowFileHandler(
                     addNetworkInformationAttributes,
                     processSessionFactoryReference,
                     targetRelationship,
                     logger
                 ),
-
-                // todo remove old
-//                /** TODO */
-//                Tcp2flowAndAttributesDecoder(logger),
-//                /** TODO */
-//                Tcp2flowAndAttributesChannelHandler(
-//                    addNetworkInformationAttributes,
-//                    processSessionFactoryReference,
-//                    targetRelationship,
-//                    logger
-//                ),
             )
         }
     }
