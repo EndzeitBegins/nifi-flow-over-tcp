@@ -96,7 +96,7 @@ class ListenFlowFromTCPTest {
             attributes = emptyMap(),
             content = emptyList(),
         )
-        testRunner.setProperty(ListenFlowFromTCP.ADD_IP_AND_PORT_TO_ATTRIBUTE, "true")
+        testRunner.setProperty(ListenFlowFromTCP.ADD_NETWORK_INFORMATION_ATTRIBUTES, "true")
 
         runWith(flowFile)
 
@@ -126,10 +126,6 @@ class ListenFlowFromTCPTest {
         testRunner.run(1, false, true)
         tcpClient.send(payload)
         testRunner.run(1, false, false)
-
-//        // todo remove ---
-//        Thread.sleep(10_000)
-//        // todo remove ---
 
         testRunner.assertAllFlowFilesTransferred(REL_SUCCESS, 1)
         val flowFile = testRunner.getFlowFilesForRelationship(REL_SUCCESS).single()
