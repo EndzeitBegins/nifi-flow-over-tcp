@@ -40,7 +40,7 @@ dependencies {
     parentNar("org.apache.nifi:nifi-standard-services-api-nar:$niFiVersion")
 
     // JSON (de)serialization
-    val jacksonVersion = "2.14.1"
+    val jacksonVersion = "2.14.2"
     implementation("com.fasterxml.jackson.core:jackson-core:$jacksonVersion")
     implementation("com.fasterxml.jackson.core:jackson-databind:$jacksonVersion")
     implementation("com.fasterxml.jackson.module:jackson-module-kotlin:$jacksonVersion")
