@@ -1,6 +1,5 @@
 import org.gradle.api.tasks.testing.logging.TestExceptionFormat
 import org.gradle.api.tasks.testing.logging.TestLogEvent.*
-import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 import java.time.Instant
 import java.time.temporal.ChronoUnit
 
@@ -23,6 +22,12 @@ group = "io.github.endzeitbegins"
 val artifactName = "nifi-flow-over-tcp"
 
 val niFiVersion = "1.19.1"
+
+java {
+    toolchain {
+        languageVersion.set(JavaLanguageVersion.of(8))
+    }
+}
 
 kotlin {
     explicitApi()
@@ -110,19 +115,6 @@ nexusPublishing {
 }
 
 tasks {
-    val jvmTargetVersion = "1.8"
-
-    withType<JavaCompile> {
-        sourceCompatibility = jvmTargetVersion
-        targetCompatibility = jvmTargetVersion
-    }
-
-    withType<KotlinCompile> {
-        kotlinOptions {
-            jvmTarget = jvmTargetVersion
-        }
-    }
-
     test {
         useJUnitPlatform()
 
