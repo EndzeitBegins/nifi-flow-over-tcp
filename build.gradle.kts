@@ -21,7 +21,7 @@ repositories {
 group = "io.github.endzeitbegins"
 val artifactName = "nifi-flow-over-tcp"
 
-val niFiVersion = "1.19.1"
+val niFiVersion = "1.20.0"
 
 java {
     toolchain {
