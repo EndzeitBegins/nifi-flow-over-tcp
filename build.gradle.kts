@@ -33,6 +33,10 @@ kotlin {
     explicitApi()
 }
 
+testing {
+
+}
+
 dependencies {
     // Apache NiFi
     implementation("org.apache.nifi:nifi-api:$niFiVersion")
@@ -55,7 +59,7 @@ dependencies {
 
     // testing
     testImplementation("org.junit.jupiter:junit-jupiter:5.9.2")
-    testImplementation("com.natpryce:hamkrest:1.8.0.1")
+    testImplementation("io.strikt:strikt-core:0.34.0")
     testImplementation("org.apache.nifi:nifi-mock:$niFiVersion")
     testImplementation("org.slf4j:slf4j-simple:2.0.6")
     testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.6.4")

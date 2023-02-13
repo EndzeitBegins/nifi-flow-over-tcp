@@ -1,15 +1,14 @@
 package io.github.endzeitbegins.nifi.flowovertcp
 
-import com.natpryce.hamkrest.assertion.assertThat
-import com.natpryce.hamkrest.equalTo
-import com.natpryce.hamkrest.hasElement
 import io.github.endzeitbegins.nifi.flowovertcp.internal.codec.send.toByteRepresentation
 import io.github.endzeitbegins.nifi.flowovertcp.testing.flowfile.TestFlowFile
 import io.github.endzeitbegins.nifi.flowovertcp.testing.flowfile.toByteRepresentation
-import io.github.endzeitbegins.nifi.flowovertcp.testing.flowfile.toTestFlowFile
 import io.github.endzeitbegins.nifi.flowovertcp.testing.flowfile.withoutCoreAttributes
 import io.github.endzeitbegins.nifi.flowovertcp.testing.tcp.testTcpClient
 import io.github.endzeitbegins.nifi.flowovertcp.testing.testrunner.newTestRunner
+import io.github.endzeitbegins.nifi.flowovertcp.testing.utils.strikt.attributes
+import io.github.endzeitbegins.nifi.flowovertcp.testing.utils.strikt.receivedFlowFile
+import io.github.endzeitbegins.nifi.flowovertcp.testing.utils.strikt.receivedFlowFiles
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.joinAll
 import kotlinx.coroutines.launch
@@ -18,7 +17,10 @@ import org.apache.nifi.processor.util.listen.AbstractListenEventProcessor.REL_SU
 import org.apache.nifi.processor.util.listen.ListenerProperties
 import org.apache.nifi.remote.io.socket.NetworkUtils
 import org.junit.jupiter.api.Test
-import org.junit.jupiter.api.assertAll
+import strikt.api.expectThat
+import strikt.assertions.containsExactlyInAnyOrder
+import strikt.assertions.hasEntry
+import strikt.assertions.isEqualTo
 import java.nio.ByteOrder
 import kotlin.random.Random
 
@@ -33,6 +35,7 @@ class ListenFlowFromTCPTest {
     }
 
     private val tcpClient = testTcpClient(hostname, port)
+
     @Test
     fun `supports transfer of FlowFiles with no attributes and empty content`() {
         val flowFile = TestFlowFile(
@@ -86,8 +89,11 @@ class ListenFlowFromTCPTest {
         runWith(flowFile)
 
         testRunner.assertAllFlowFilesTransferred(REL_SUCCESS, 1)
-        val receivedFlowFile = testRunner.getFlowFilesForRelationship(REL_SUCCESS).single().toTestFlowFile()
-        assertThat(receivedFlowFile.attributes.filterKeys { key -> key != "uuid" }, equalTo(overridableCoreAttributes))
+        expectThat(testRunner.receivedFlowFile).attributes().and {
+            for ((key, value) in overridableCoreAttributes) {
+                hasEntry(key, value)
+            }
+        }
     }
 
     @Test
@@ -101,13 +107,11 @@ class ListenFlowFromTCPTest {
         runWith(flowFile)
 
         testRunner.assertAllFlowFilesTransferred(REL_SUCCESS, 1)
-        val receivedFlowFile = testRunner.getFlowFilesForRelationship(REL_SUCCESS)
-            .single().toTestFlowFile().withoutCoreAttributes()
-        assertThat(receivedFlowFile.attributes, equalTo(mapOf(
-            "tcp.sender" to "127.0.0.1",
-            "tcp.receiver" to "127.0.0.1",
-            "tcp.receiver_port" to "$port"
-        )))
+        expectThat(testRunner.receivedFlowFile).attributes().and {
+            hasEntry("tcp.sender", "127.0.0.1")
+            hasEntry("tcp.receiver", "127.0.0.1")
+            hasEntry("tcp.receiver_port", "$port")
+        }
     }
 
     @Test
@@ -129,7 +133,7 @@ class ListenFlowFromTCPTest {
 
         testRunner.assertAllFlowFilesTransferred(REL_SUCCESS, 1)
         val flowFile = testRunner.getFlowFilesForRelationship(REL_SUCCESS).single()
-        assertThat(flowFile.size, equalTo(expectedByteLength.toLong()))
+        expectThat(flowFile.size).isEqualTo(expectedByteLength.toLong())
     }
 
     @Test
@@ -204,11 +208,9 @@ class ListenFlowFromTCPTest {
 
         val expectedFlowFiles = flowFiles
             .map { flowFile -> flowFile.withoutCoreAttributes() }
-        val receivedFlowFiles = testRunner.getFlowFilesForRelationship(REL_SUCCESS)
-            .map { mockFlowFile -> mockFlowFile.toTestFlowFile().withoutCoreAttributes() }
+        val receivedFlowFiles = testRunner.receivedFlowFiles
+            .map { receivedFlowFile -> receivedFlowFile.withoutCoreAttributes() }
 
-        assertAll(expectedFlowFiles.map { expectedFlowFile ->
-            { assertThat(receivedFlowFiles, hasElement(expectedFlowFile)) }
-        })
+        expectThat(receivedFlowFiles).containsExactlyInAnyOrder(expectedFlowFiles)
     }
 }

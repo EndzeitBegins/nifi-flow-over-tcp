@@ -1,19 +1,20 @@
 package io.github.endzeitbegins.nifi.flowovertcp
 
-import com.natpryce.hamkrest.*
-import com.natpryce.hamkrest.assertion.assertThat
 import io.github.endzeitbegins.nifi.flowovertcp.PutFlowToTCP.Companion.INCLUDE_CORE_ATTRIBUTES
 import io.github.endzeitbegins.nifi.flowovertcp.internal.attributes.coreAttributes
 import io.github.endzeitbegins.nifi.flowovertcp.testing.flowfile.TestFlowFile
 import io.github.endzeitbegins.nifi.flowovertcp.testing.flowfile.enqueue
-import io.github.endzeitbegins.nifi.flowovertcp.testing.flowfile.toTestFlowFile
 import io.github.endzeitbegins.nifi.flowovertcp.testing.tcp.testTcpServer
 import io.github.endzeitbegins.nifi.flowovertcp.testing.testrunner.newTestRunner
-import io.github.endzeitbegins.nifi.flowovertcp.testing.utils.not
+import io.github.endzeitbegins.nifi.flowovertcp.testing.utils.strikt.attributes
+import io.github.endzeitbegins.nifi.flowovertcp.testing.utils.strikt.keys
+import io.github.endzeitbegins.nifi.flowovertcp.testing.utils.strikt.transferredFlowFiles
 import org.apache.nifi.flowfile.attributes.CoreAttributes
 import org.apache.nifi.processor.util.put.AbstractPutEventProcessor.*
 import org.apache.nifi.remote.io.socket.NetworkUtils
 import org.junit.jupiter.api.*
+import strikt.api.expectThat
+import strikt.assertions.*
 import java.io.InputStream
 import kotlin.random.Random
 
@@ -53,9 +54,10 @@ class PutFlowToTCPTest {
         testRunner.run()
 
         testRunner.assertAllFlowFilesTransferred(REL_SUCCESS, 1)
-        val transferredFlowFiles = tcpServer.receivedBytes.values.map { it.toTestFlowFile() }
-        assertThat(transferredFlowFiles, hasSize(equalTo(1)))
-        assertThat(transferredFlowFiles[0], equalTo(flowFile))
+        expectThat(tcpServer.transferredFlowFiles) {
+            hasSize(1)
+            contains(flowFile)
+        }
     }
 
     @Test
@@ -69,9 +71,10 @@ class PutFlowToTCPTest {
         testRunner.run()
 
         testRunner.assertAllFlowFilesTransferred(REL_SUCCESS, 1)
-        val transferredFlowFiles = tcpServer.receivedBytes.values.map { it.toTestFlowFile() }
-        assertThat(transferredFlowFiles, hasSize(equalTo(1)))
-        assertThat(transferredFlowFiles[0], equalTo(flowFile))
+        expectThat(tcpServer.transferredFlowFiles) {
+            hasSize(1)
+            contains(flowFile)
+        }
     }
 
     @Test
@@ -88,9 +91,10 @@ class PutFlowToTCPTest {
         testRunner.run()
 
         testRunner.assertAllFlowFilesTransferred(REL_SUCCESS, 1)
-        val transferredFlowFiles = tcpServer.receivedBytes.values.map { it.toTestFlowFile() }
-        assertThat(transferredFlowFiles, hasSize(equalTo(1)))
-        assertThat(transferredFlowFiles[0], equalTo(flowFile))
+        expectThat(tcpServer.transferredFlowFiles) {
+            hasSize(1)
+            contains(flowFile)
+        }
     }
 
     @Test
@@ -115,7 +119,7 @@ class PutFlowToTCPTest {
         val expectedByteLength = 50_000_000L // 50 mb
         val random = Random(42)
         var bytesLeft = expectedByteLength
-        val data: InputStream = object: InputStream() {
+        val data: InputStream = object : InputStream() {
             override fun read(): Int {
                 return if (bytesLeft > 0) {
                     bytesLeft -= 1
@@ -130,7 +134,7 @@ class PutFlowToTCPTest {
 
         testRunner.assertAllFlowFilesTransferred(REL_SUCCESS, 1)
         testRunner.assertAllFlowFiles { flowFile ->
-            assertThat(flowFile.size, equalTo(expectedByteLength))
+            expectThat(flowFile.size).isEqualTo(expectedByteLength)
         }
     }
 
@@ -151,7 +155,7 @@ class PutFlowToTCPTest {
         testRunner.assertAllFlowFilesTransferred(REL_SUCCESS, iterations)
         val flowFiles = testRunner.getFlowFilesForRelationship(REL_SUCCESS)
         val actualIndices = flowFiles.map { it.attributes.getValue("index").toInt() }.toSet()
-        assertThat(actualIndices, equalTo(expectedIndices))
+        expectThat(actualIndices).isEqualTo(expectedIndices)
     }
 
     @Test
@@ -172,7 +176,7 @@ class PutFlowToTCPTest {
         testRunner.assertAllFlowFilesTransferred(REL_SUCCESS, iterations)
         val flowFiles = testRunner.getFlowFilesForRelationship(REL_SUCCESS)
         val actualIndices = flowFiles.map { it.attributes.getValue("index").toInt() }.toSet()
-        assertThat(actualIndices, equalTo(expectedIndices))
+        expectThat(actualIndices).isEqualTo(expectedIndices)
     }
 
     @Test
@@ -193,7 +197,7 @@ class PutFlowToTCPTest {
         testRunner.assertAllFlowFilesTransferred(REL_SUCCESS, iterations)
         val flowFiles = testRunner.getFlowFilesForRelationship(REL_SUCCESS)
         val actualIndices = flowFiles.map { it.attributes.getValue("index").toInt() }.toSet()
-        assertThat(actualIndices, equalTo(expectedIndices))
+        expectThat(actualIndices).isEqualTo(expectedIndices)
     }
 
     @Test
@@ -214,7 +218,7 @@ class PutFlowToTCPTest {
         testRunner.assertAllFlowFilesTransferred(REL_SUCCESS, iterations)
         val flowFiles = testRunner.getFlowFilesForRelationship(REL_SUCCESS)
         val actualIndices = flowFiles.map { it.attributes.getValue("index").toInt() }.toSet()
-        assertThat(actualIndices, equalTo(expectedIndices))
+        expectThat(actualIndices).isEqualTo(expectedIndices)
     }
 
     @Nested
@@ -237,9 +241,13 @@ class PutFlowToTCPTest {
             testRunner.run()
 
             testRunner.assertAllFlowFilesTransferred(REL_SUCCESS, 1)
-            val transferredFlowFiles = tcpServer.receivedBytes.values.map { it.toTestFlowFile() }
-            assertThat(transferredFlowFiles, hasSize(equalTo(1)))
-            assertThat(transferredFlowFiles[0].attributes.keys, equalTo(setOf("foo", "other", "missing")))
+            expectThat(tcpServer.transferredFlowFiles) {
+                hasSize(1)
+                single().attributes().and {
+                    containsKeys("foo", "other", "missing")
+                    doesNotContainKeys("fOo")
+                }
+            }
         }
 
         @Test
@@ -259,9 +267,13 @@ class PutFlowToTCPTest {
             testRunner.run()
 
             testRunner.assertAllFlowFilesTransferred(REL_SUCCESS, 1)
-            val transferredFlowFiles = tcpServer.receivedBytes.values.map { it.toTestFlowFile() }
-            assertThat(transferredFlowFiles, hasSize(equalTo(1)))
-            assertThat(transferredFlowFiles[0].attributes.keys, equalTo(setOf("foo", "foooooooo")))
+            expectThat(tcpServer.transferredFlowFiles) {
+                hasSize(1)
+                single().attributes().and {
+                    containsKeys("foo", "foooooooo")
+                    doesNotContainKeys("fofoo", "food")
+                }
+            }
         }
 
         @Test
@@ -281,9 +293,13 @@ class PutFlowToTCPTest {
             testRunner.run()
 
             testRunner.assertAllFlowFilesTransferred(REL_SUCCESS, 1)
-            val transferredFlowFiles = tcpServer.receivedBytes.values.map { it.toTestFlowFile() }
-            assertThat(transferredFlowFiles, hasSize(equalTo(1)))
-            assertThat(transferredFlowFiles[0].attributes.keys, equalTo(setOf("bar", "foo")))
+            expectThat(tcpServer.transferredFlowFiles) {
+                hasSize(1)
+                single().attributes().and {
+                    containsKeys("bar", "foo")
+                    doesNotContainKeys("noo")
+                }
+            }
         }
 
         @Test
@@ -298,11 +314,12 @@ class PutFlowToTCPTest {
             testRunner.run()
 
             testRunner.assertAllFlowFilesTransferred(REL_SUCCESS, 1)
-            val transferredFlowFiles = tcpServer.receivedBytes.values.map { it.toTestFlowFile() }
-            assertThat(transferredFlowFiles, hasSize(equalTo(1)))
-            assertAll(transferredFlowFiles[0].attributes.keys.map { attributeKey ->
-                { assertThat(attributeKey, isIn(coreAttributes)) }
-            })
+            expectThat(tcpServer.transferredFlowFiles) {
+                hasSize(1)
+                single().attributes().keys().all {
+                    isContainedIn(coreAttributes)
+                }
+            }
         }
 
         @Test
@@ -317,9 +334,12 @@ class PutFlowToTCPTest {
             testRunner.run()
 
             testRunner.assertAllFlowFilesTransferred(REL_SUCCESS, 1)
-            val transferredFlowFiles = tcpServer.receivedBytes.values.map { it.toTestFlowFile() }
-            assertThat(transferredFlowFiles, hasSize(equalTo(1)))
-            assertThat(transferredFlowFiles[0].attributes.keys, not(hasElement(CoreAttributes.UUID.key())))
+            expectThat(tcpServer.transferredFlowFiles) {
+                hasSize(1)
+                single().attributes().and {
+                    doesNotContainKey(CoreAttributes.UUID.key())
+                }
+            }
         }
     }
 
@@ -338,11 +358,12 @@ class PutFlowToTCPTest {
             testRunner.run()
 
             testRunner.assertAllFlowFilesTransferred(REL_SUCCESS, 1)
-            val transferredFlowFiles = tcpServer.receivedBytes.values.map { it.toTestFlowFile() }
-            assertThat(transferredFlowFiles, hasSize(equalTo(1)))
-            val attributeValues = transferredFlowFiles[0].attributes.values
-            assertThat(attributeValues.size, equalTo(1))
-            assertThat(attributeValues.single(), equalTo(null))
+            expectThat(tcpServer.transferredFlowFiles) {
+                hasSize(1)
+                single().attributes().and {
+                    hasEntry("missing", null)
+                }
+            }
         }
 
         @Test
@@ -358,10 +379,12 @@ class PutFlowToTCPTest {
             testRunner.run()
 
             testRunner.assertAllFlowFilesTransferred(REL_SUCCESS, 1)
-            val transferredFlowFiles = tcpServer.receivedBytes.values.map { it.toTestFlowFile() }
-            val attributeValues = transferredFlowFiles[0].attributes.values
-            assertThat(attributeValues.size, equalTo(1))
-            assertThat(attributeValues.single(), equalTo(""))
+            expectThat(tcpServer.transferredFlowFiles) {
+                hasSize(1)
+                single().attributes().and {
+                    hasEntry("missing", "")
+                }
+            }
         }
     }
 }
