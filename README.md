@@ -24,6 +24,14 @@ Download the `.nar` of the latest release from [maven-central](http://search.mav
 There are multiple ways of integrating a `.nar` archive into a NiFi cluster,
 as outlined in the [NiFi System Administrator’s Guide](https://nifi.apache.org/docs/nifi-docs/html/administration-guide.html#processor-locations).
 
+#### Compatibility
+
+| nifi-flow-over-tcp                    | Apache NiFi |
+| ------------------------------------- | ----------- |
+| 0.7.0                                 | 1.20.0      |
+| 0.6.0 <br> 0.5.0                      | 1.19.1      |
+| 0.4.0 <br> 0.3.0 <br> 0.2.0 <br> 0.1.0| 1.18.0      |
+
 ### Integration
 
 The project contains multiple processors. 
