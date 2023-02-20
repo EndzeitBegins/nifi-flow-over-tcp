@@ -59,7 +59,7 @@ dependencies {
 
     // testing
     testImplementation("org.junit.jupiter:junit-jupiter:5.9.2")
-    testImplementation("io.strikt:strikt-core:0.34.0")
+    testImplementation("io.strikt:strikt-core:0.34.1")
     testImplementation("org.apache.nifi:nifi-mock:$niFiVersion")
     testImplementation("org.slf4j:slf4j-simple:2.0.6")
     testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.6.4")
