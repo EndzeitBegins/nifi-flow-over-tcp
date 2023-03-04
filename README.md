@@ -2,7 +2,7 @@
 
 ![CI Status](https://github.com/EndzeitBegins/nifi-flow-over-tcp/actions/workflows/gradle.yml/badge.svg)
 [![Qodana](https://github.com/EndzeitBegins/nifi-flow-over-tcp/actions/workflows/code_quality.yml/badge.svg)](https://github.com/EndzeitBegins/nifi-flow-over-tcp/actions/workflows/code_quality.yml)
-[![Maven Central](https://img.shields.io/maven-central/v/io.github.endzeitbegins/nifi-flow-over-tcp?color=ff69b4)](http://search.maven.org/#search%7Cga%7C1%7Cg%3A%22io.github.endzeitbegins%22%20AND%20a%3A%22nifi-flow-over-tcp%22)
+[![Maven Central](https://img.shields.io/maven-central/v/io.github.endzeitbegins/nifi-flow-over-tcp?color=ff69b4)](https://central.sonatype.com/search?q=nifi-flow-over-tcp&namespace=io.github.endzeitbegins)
 
 Use this project to transfer your [Apache NiFi][nifi] FlowFiles 
 from one cluster to another, using bare TCP connections.
@@ -19,7 +19,7 @@ as long as `ACK` packets from the receiving site are allowed through.
 
 ### Installation
 
-Download the `.nar` of the latest release from [maven-central](http://search.maven.org/#search%7Cga%7C1%7Cg%3A%22io.github.endzeitbegins%22%20AND%20a%3A%22nifi-flow-over-tcp%22).
+Download the `.nar` of the latest release from [maven-central](https://central.sonatype.com/search?q=nifi-flow-over-tcp&namespace=io.github.endzeitbegins).
 
 There are multiple ways of integrating a `.nar` archive into a NiFi cluster,
 as outlined in the [NiFi System Administrator’s Guide](https://nifi.apache.org/docs/nifi-docs/html/administration-guide.html#processor-locations).
