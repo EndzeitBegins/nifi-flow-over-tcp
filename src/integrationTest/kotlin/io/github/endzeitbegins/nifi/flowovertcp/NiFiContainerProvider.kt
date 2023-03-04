@@ -37,6 +37,7 @@ object NiFiContainerProvider {
                 )
             )
             .withFixedExposedPort(port, port)
+            .withExposedPorts(port)
             .withFileSystemBind(hostPath, containerPath, BindMode.READ_ONLY)
             .waitingFor(HttpWaitStrategy().forPath("/nifi"))
 
