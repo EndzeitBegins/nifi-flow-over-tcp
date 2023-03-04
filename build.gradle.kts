@@ -34,10 +34,6 @@ kotlin {
     explicitApi()
 }
 
-testing {
-
-}
-
 dependencies {
     // Apache NiFi
     implementation("org.apache.nifi:nifi-api:$niFiVersion")
@@ -51,13 +47,53 @@ dependencies {
 
     // JSON (de)serialization
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.5.0")
+}
 
-    // testing
-    testImplementation("org.junit.jupiter:junit-jupiter:5.9.2")
-    testImplementation("io.strikt:strikt-core:0.34.1")
-    testImplementation("org.apache.nifi:nifi-mock:$niFiVersion")
-    testImplementation("org.slf4j:slf4j-simple:2.0.7")
-    testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.6.4")
+testing {
+    @Suppress("UnstableApiUsage")
+    suites {
+        val test by getting(JvmTestSuite::class) {
+            useJUnitJupiter()
+
+            dependencies {
+                implementation("io.strikt:strikt-core:0.34.1")
+                implementation("org.apache.nifi:nifi-mock:$niFiVersion")
+                implementation("org.slf4j:slf4j-simple:2.0.7")
+                implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.6.4")
+            }
+        }
+
+        val integrationTest by registering(JvmTestSuite::class) {
+            useJUnitJupiter()
+
+            testType.set(TestSuiteType.INTEGRATION_TEST)
+
+            sources {
+                resources {
+                    this.srcDirs
+                }
+            }
+
+            targets {
+                all {
+                    testTask.configure {
+                        shouldRunAfter(test)
+
+                        environment("nifi.version", niFiVersion)
+                    }
+                }
+            }
+
+            dependencies {
+                // include build .nar artifact to integrate into the Docker container
+                implementation(tasks.nar.map { dependencyFactory.create(it.outputs.files) })
+
+                implementation("io.strikt:strikt-core:0.34.1")
+                implementation("org.slf4j:slf4j-simple:2.0.7")
+                implementation("org.testcontainers:testcontainers:1.17.6")
+            }
+        }
+    }
 }
 
 signing {
@@ -73,7 +109,7 @@ publishing {
     publications.create<MavenPublication>("maven") {
         artifactId = artifactName
 
-        artifact(tasks["nar"])
+        artifact(tasks.nar)
 
         pom {
             name.set(artifactName)
@@ -114,15 +150,18 @@ nexusPublishing {
 }
 
 tasks {
-    test {
-        useJUnitPlatform()
-
+    withType<Test>().configureEach {
         testLogging {
             showStandardStreams = true
             exceptionFormat = TestExceptionFormat.FULL
 
             events(PASSED, SKIPPED, FAILED, STANDARD_OUT, STANDARD_ERROR)
         }
+    }
+
+    check {
+        @Suppress("UnstableApiUsage")
+        dependsOn(testing.suites.named("integrationTest"))
     }
 
     nar {
