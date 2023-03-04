@@ -49,6 +49,10 @@ object NiFiContainerProvider {
         val pathSeparator = System.getProperty("file.separator")
         val classpath = System.getProperty("java.class.path")
 
+        // TODO remove below
+        System.err.println(classpath)
+        // TODO remove above
+
         return classpath
             .split(pathSeparator)
             .filter { it.matches("""^nifi-flow-over-tcp.*[.]nar$""".toRegex()) }
