@@ -52,7 +52,7 @@ object NiFiContainerProvider {
         val narFileRegex = """^nifi-flow-over-tcp.*[.]nar$""".toRegex()
 
         return classpath
-            .split(pathSeparator)
+            .split(":")
             .filter { it.substringAfterLast(pathSeparator).matches(narFileRegex) }
             .map { Path(it) }
             .single()
