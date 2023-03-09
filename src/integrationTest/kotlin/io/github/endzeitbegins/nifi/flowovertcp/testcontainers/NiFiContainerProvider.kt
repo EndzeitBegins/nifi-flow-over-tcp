@@ -1,4 +1,4 @@
-package io.github.endzeitbegins.nifi.flowovertcp
+package io.github.endzeitbegins.nifi.flowovertcp.testcontainers
 
 import org.testcontainers.containers.BindMode
 import org.testcontainers.containers.FixedHostPortGenericContainer
@@ -15,8 +15,8 @@ object NiFiContainerProvider {
 
     private val nifiVersion = environment["nifi.version"]
 
-    const val username: String = "admin"
-    const val password: String = "passwordWithAtLeast12Characters"
+    private const val username: String = "admin"
+    private const val password: String = "passwordWithAtLeast12Characters"
 
     val port: Int = ServerSocket(0).use { it.localPort }
 
