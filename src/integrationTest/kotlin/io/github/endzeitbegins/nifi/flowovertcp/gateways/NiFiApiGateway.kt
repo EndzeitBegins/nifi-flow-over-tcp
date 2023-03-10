@@ -9,6 +9,7 @@ interface NiFiApiGateway {
         type: String,
         name: String,
         properties: Map<String, String>,
+        position: Position = defaultPosition,
         autoTerminatedRelationships: Set<String> = emptySet()
     ): Processor
 
@@ -17,6 +18,8 @@ interface NiFiApiGateway {
         source: ConnectionSource,
         destination: ConnectionDestination,
     ): Connection
+
+    fun startProcessGroup(id: String)
 }
 
 object Connection
@@ -41,3 +44,6 @@ sealed interface ConnectionDestination {
         override val destinationId: String,
     ): ConnectionDestination
 }
+
+val defaultPosition = Position(x = 0, y = 0)
+data class Position(val x: Int, val y: Int)

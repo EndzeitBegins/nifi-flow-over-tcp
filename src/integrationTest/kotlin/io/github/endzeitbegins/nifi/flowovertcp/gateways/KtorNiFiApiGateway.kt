@@ -8,10 +8,12 @@ import io.ktor.client.engine.cio.*
 import io.ktor.client.plugins.contentnegotiation.*
 import io.ktor.client.plugins.logging.*
 import io.ktor.client.request.*
+import io.ktor.client.statement.*
 import io.ktor.http.*
 import io.ktor.serialization.kotlinx.json.*
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 
 object KtorNiFiApiGateway : NiFiApiGateway {
@@ -35,28 +37,33 @@ object KtorNiFiApiGateway : NiFiApiGateway {
         type: String,
         name: String,
         properties: Map<String, String>,
+        position: Position,
         autoTerminatedRelationships: Set<String>,
     ): Processor {
+        val body = ProcessorEntity(
+            id = null,
+            component = ProcessorDTO(
+                name = name,
+                type = type,
+                config = ProcessorConfigDTO(
+                    properties = properties,
+                    autoTerminatedRelationships = autoTerminatedRelationships
+                ),
+                position = position.toPositionDTO(),
+            ),
+            revision = RevisionDTO(
+                clientId = "fixed-client-id",
+                version = 0,
+            ),
+        )
+
+        val testme = Json.encodeToString(body)
+        println(testme)
+
         val createdProcessorEntity = runBlocking {
             val response = client.post("$niFiUrl/process-groups/$parentProcessGroupId/processors") {
                 contentType(ContentType.Application.Json)
-                setBody(
-                    ProcessorEntity(
-                        id = null,
-                        component = ProcessorDTO(
-                            name = name,
-                            type = type,
-                            config = ProcessorConfigDTO(
-                                properties = properties,
-                                autoTerminatedRelationships = autoTerminatedRelationships
-                            )
-                        ),
-                        revision = RevisionDTO(
-                            clientId = "meh",
-                            version = 0,
-                        ),
-                    )
-                )
+                setBody(body)
             }
 
             response.body<ProcessorEntity>()
@@ -104,7 +111,26 @@ object KtorNiFiApiGateway : NiFiApiGateway {
 
         return Connection
     }
+
+    override fun startProcessGroup(id: String) {
+        runBlocking {
+            val result = client.put("$niFiUrl/flow/process-groups/$id") {
+                contentType(ContentType.Application.Json)
+                setBody(
+                    ScheduleComponentsEntity(
+                        id = id,
+                        state = "RUNNING",
+                    )
+                )
+            }
+
+            println(result.bodyAsText())
+        }
+    }
 }
+
+private fun Position.toPositionDTO(): PositionDTO =
+    PositionDTO(x = x.toDouble(), y = y.toDouble())
 
 @Serializable
 private data class ConnectionEntity(
@@ -134,10 +160,17 @@ private data class ProcessorEntity(
 )
 
 @Serializable
+private data class PositionDTO(
+    val x: Double,
+    val y: Double,
+)
+
+@Serializable
 private data class ProcessorDTO(
     val name: String,
     val type: String,
     val config: ProcessorConfigDTO,
+    val position: PositionDTO,
 )
 
 @Serializable
@@ -150,4 +183,10 @@ private data class RevisionDTO(
 private data class ProcessorConfigDTO(
     val properties: Map<String, String?>,
     val autoTerminatedRelationships: Set<String> = emptySet(),
+)
+
+@Serializable
+private data class ScheduleComponentsEntity(
+    val id: String,
+    val state: String,
 )

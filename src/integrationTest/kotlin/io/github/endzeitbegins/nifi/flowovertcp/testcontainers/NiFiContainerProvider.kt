@@ -6,6 +6,7 @@ import org.testcontainers.containers.GenericContainer
 import org.testcontainers.containers.wait.strategy.HttpWaitStrategy
 import java.net.ServerSocket
 import java.nio.file.Path
+import java.nio.file.Paths
 import kotlin.io.path.Path
 import kotlin.io.path.absolutePathString
 
@@ -20,11 +21,14 @@ object NiFiContainerProvider {
 
     val port: Int = ServerSocket(0).use { it.localPort }
 
+    val mountedPathInContainer = "/tmp/mounted/"
+    val mountedPathOnHost = Path("src/integrationTest/resources/mounted-directory").toAbsolutePath()
+
     val container: GenericContainer<*> by lazy {
         val narFilePath: Path = locateNarFile()
 
-        val hostPath = narFilePath.absolutePathString()
-        val containerPath = "/opt/nifi/nifi-current/extensions/library.nar"
+        val narPathOnHost = narFilePath.absolutePathString()
+        val narPathInContainer = "/opt/nifi/nifi-current/extensions/library.nar"
 
         @Suppress("DEPRECATION")
         val fixedPortContainer = FixedHostPortGenericContainer("apache/nifi:$nifiVersion")
@@ -38,7 +42,8 @@ object NiFiContainerProvider {
             )
             .withFixedExposedPort(port, port)
             .withExposedPorts(port)
-            .withFileSystemBind(hostPath, containerPath, BindMode.READ_ONLY)
+            .withFileSystemBind("$mountedPathOnHost", mountedPathInContainer, BindMode.READ_WRITE)
+            .withFileSystemBind(narPathOnHost, narPathInContainer, BindMode.READ_ONLY)
             .waitingFor(HttpWaitStrategy().forPath("/nifi"))
 
         fixedPortContainer.start()
