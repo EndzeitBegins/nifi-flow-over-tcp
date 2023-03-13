@@ -9,7 +9,7 @@ plugins {
     id("io.github.lhotari.gradle-nar-plugin") version "0.5.1"
     signing
     `maven-publish`
-    id("io.github.gradle-nexus.publish-plugin") version "1.2.0"
+    id("io.github.gradle-nexus.publish-plugin") version "1.3.0"
 }
 
 repositories {
