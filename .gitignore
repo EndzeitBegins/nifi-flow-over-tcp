@@ -4,3 +4,7 @@ target/
 .*
 !/.gitignore
 build/
+
+src/integrationTest/resources/mounted-directory/from-nifi/
+src/integrationTest/resources/mounted-directory/to-nifi/
+src/integrationTest/resources/mounted-directory/nifi-logs/

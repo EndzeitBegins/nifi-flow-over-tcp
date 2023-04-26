@@ -1,11 +1,10 @@
 package io.github.endzeitbegins.nifi.flowovertcp.internal.codec.receive
 
-import io.github.endzeitbegins.nifi.flowovertcp.internal.codec.send.TransmittableFlowFile
 import io.netty.channel.ChannelHandler
-import io.netty.handler.stream.ChunkedStream
 import org.apache.nifi.event.transport.configuration.TransportProtocol
 import org.apache.nifi.event.transport.netty.NettyEventServerFactory
 import org.apache.nifi.event.transport.netty.channel.LogExceptionChannelHandler
+import org.apache.nifi.flowfile.FlowFile
 import org.apache.nifi.logging.ComponentLog
 import org.apache.nifi.processor.ProcessSessionFactory
 import org.apache.nifi.processor.Processor
@@ -37,12 +36,11 @@ internal class ReceivableFlowFileServerFactory(
 
                 /** a custom [ChannelHandler] that converts the received bytes into [ReceivableFlowFile] objects */
                 ReceivableFlowFileDecoder(logger),
-                /** a custom [ChannelHandler] that ... [ReceivableFlowFile] objects ... TODO */
+                /** a custom [ChannelHandler] that accepts [ReceivableFlowFile] objects and transforms them into [FlowFile]s */
                 ReceivableFlowFileHandler(
                     addNetworkInformationAttributes,
                     processSessionFactoryReference,
-                    targetRelationship,
-                    logger
+                    targetRelationship
                 ),
             )
         }

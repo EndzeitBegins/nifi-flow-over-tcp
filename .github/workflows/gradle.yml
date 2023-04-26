@@ -13,18 +13,33 @@ jobs:
         with:
           java-version: '8'
           distribution: 'adopt'
+
       - name: Validate Gradle wrapper
         uses: gradle/wrapper-validation-action@8d49e559aae34d3e0eb16cde532684bc9702762b
+
       - name: Build with Gradle
         uses: gradle/gradle-build-action@749f47bda3e44aa060e82d7b3ef7e40d953bd629
         with:
           arguments: build
-      - uses: actions/upload-artifact@v3
+
+      ## Artifacts ##
+      - name: Upload test results for debugging purposes
+        uses: actions/upload-artifact@v3
+        if: failure()
         with:
           name: test-report
           path: build/reports/tests/
-          if-no-files-found: error
-      - uses: actions/upload-artifact@v3
+          if-no-files-found: warn
+      - name: Upload Apache NiFi logs for debugging purposes
+        uses: actions/upload-artifact@v3
+        if: failure()
+        with:
+          name: nifi-logs
+          path: src/integrationTest/resources/mounted-directory/nifi-logs/
+          if-no-files-found: warn
+
+      - name: Upload built .nar artifact
+        uses: actions/upload-artifact@v3
         with:
           name: nar
           path: build/libs/*.nar
