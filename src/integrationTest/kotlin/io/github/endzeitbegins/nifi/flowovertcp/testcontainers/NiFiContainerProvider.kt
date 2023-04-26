@@ -73,13 +73,23 @@ object NiFiContainerProvider {
         fixedPortContainer.start()
 
         // TODO vvvv
+        println("--- here i am ---")
+        println(mountedPathOnHost)
+        println(logPathOnHost)
         val res1 = fixedPortContainer.execInContainer("ls -la /opt/nifi/nifi-current")
         println(res1.stdout)
         println(res1.stderr)
         val res2 = fixedPortContainer.execInContainer("ls -la /opt/nifi/nifi-current/logs")
         println(res2.stdout)
         println(res2.stderr)
+        val res3 = fixedPortContainer.execInContainer("ls -la /tmp/mounted/")
+        println(res3.stdout)
+        println(res3.stderr)
+        val res4 = fixedPortContainer.execInContainer("ls -la /opt/nifi/nifi-current/extensions/")
+        println(res4.stdout)
+        println(res4.stderr)
         fixedPortContainer.followOutput(Slf4jLogConsumer(LoggerFactory.getLogger("nifi-container-logs"))) // TODO ?!
+        println("--- here i end ---")
         // TODO ^^^^
 
 
