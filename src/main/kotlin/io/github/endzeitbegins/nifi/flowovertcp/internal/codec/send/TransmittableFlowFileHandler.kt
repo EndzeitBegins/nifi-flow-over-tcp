@@ -1,6 +1,6 @@
 package io.github.endzeitbegins.nifi.flowovertcp.internal.codec.send
 
-import io.github.endzeitbegins.nifi.flowovertcp.internal.codec.toJson
+import io.github.endzeitbegins.nifi.flowovertcp.internal.codec.toJsonMap
 import io.github.endzeitbegins.nifi.flowovertcp.internal.utils.chunked
 import io.github.endzeitbegins.nifi.flowovertcp.internal.utils.concatenate
 import io.netty.channel.ChannelHandler
@@ -23,7 +23,7 @@ internal object TransmittableFlowFileHandler : MessageToMessageEncoder<Transmitt
 
 
     override fun encode(ctx: ChannelHandlerContext, msg: TransmittableFlowFile, out: MutableList<Any>) {
-        val attributesJson = msg.attributes.toJson()
+        val attributesJson = msg.attributes.toJsonMap()
         val attributesBytes = attributesJson.encodeToByteArray()
 
         val attributesLength: Int = attributesBytes.size
