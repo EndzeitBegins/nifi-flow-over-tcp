@@ -6,7 +6,7 @@ import java.util.concurrent.TimeoutException
 
 internal fun waitFor(
     duration: Duration,
-    errorMessage: String = "Failed to meet predicate after $duration.",
+    onError: () -> String,
     predicate: () -> Boolean,
 ) {
     val startTime = Instant.now()
@@ -20,5 +20,5 @@ internal fun waitFor(
         Thread.sleep(250)
     } while (Instant.now() < timeout)
 
-    throw TimeoutException(errorMessage)
+    throw TimeoutException(onError())
 }
