@@ -4,9 +4,11 @@ import io.github.endzeitbegins.nifi.flowovertcp.testcontainers.NiFiContainerProv
 import io.github.endzeitbegins.nifi.flowovertcp.testcontainers.NiFiContainerProvider.mountedPathInContainer
 import io.github.endzeitbegins.nifi.flowovertcp.testcontainers.NiFiContainerProvider.mountedPathOnHost
 import io.github.endzeitbegins.nifi.flowovertcp.testcontainers.NiFiContainerProvider.port
+import org.slf4j.LoggerFactory
 import org.testcontainers.containers.BindMode
 import org.testcontainers.containers.FixedHostPortGenericContainer
 import org.testcontainers.containers.GenericContainer
+import org.testcontainers.containers.output.Slf4jLogConsumer
 import org.testcontainers.containers.wait.strategy.HttpWaitStrategy
 import java.net.ServerSocket
 import java.nio.file.Path
@@ -58,6 +60,8 @@ object NiFiContainerProvider {
             .withFileSystemBind("$mountedPathOnHost", mountedPathInContainer, BindMode.READ_WRITE)
             .withFileSystemBind(narPathOnHost, narPathInContainer, BindMode.READ_ONLY)
             .waitingFor(HttpWaitStrategy().forPath("/nifi"))
+
+        fixedPortContainer.followOutput(Slf4jLogConsumer(LoggerFactory.getLogger("nifi-container-logs"))) // TODO ?!
 
         println("""
             ############################################################
