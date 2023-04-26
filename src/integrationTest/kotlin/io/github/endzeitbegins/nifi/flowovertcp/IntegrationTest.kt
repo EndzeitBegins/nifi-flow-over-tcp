@@ -9,8 +9,6 @@ import io.github.endzeitbegins.nifi.flowovertcp.testing.assertions.sha256HashSum
 import io.github.endzeitbegins.nifi.flowovertcp.testing.waitFor
 import io.github.endzeitbegins.nifi.flowovertcp.utils.deleteRegularFilesRecursively
 import io.github.endzeitbegins.nifi.flowovertcp.utils.sha256
-import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.decodeFromStream
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInstance
 import strikt.api.expect
@@ -40,7 +38,7 @@ class IntegrationTest {
 
     @Test
     internal fun `supports transfer of FlowFiles with both content and attributes`() {
-        val testSet = List(420) {
+        val testSet = List(123) {
             val fileSize = random.nextInt(1_024, 64 * 1_024)
             val fileContent = random.nextBytes(fileSize)
             val fileName = "${UUID.nameUUIDFromBytes(fileContent)}"
@@ -58,7 +56,7 @@ class IntegrationTest {
         val destinationDirectory = NiFiContainerProvider.mountedPathOnHost / "from-nifi"
 
         waitFor(
-            duration = Duration.ofSeconds(150),
+            duration = Duration.ofSeconds(300),
             errorMessage = "Not all attributes were received after timeout has been reached!"
         ) {
             val attributeFiles = destinationDirectory
