@@ -12,6 +12,7 @@ import java.net.ServerSocket
 import java.nio.file.Path
 import kotlin.io.path.Path
 import kotlin.io.path.absolutePathString
+import kotlin.io.path.div
 
 private val environment = System.getenv()
 
@@ -30,6 +31,9 @@ object NiFiContainerProvider {
 
     const val mountedPathInContainer = "/tmp/mounted/"
     val mountedPathOnHost: Path = Path("src/integrationTest/resources/mounted-directory").toAbsolutePath()
+
+    const val logPathInContainer = "/opt/nifi/nifi-current/logs"
+    val logPathOnHost = mountedPathOnHost / "nifi-logs"
 
     val container: GenericContainer<*> by lazy {
         val port: Int = ServerSocket(0).use { it.localPort }
@@ -50,6 +54,7 @@ object NiFiContainerProvider {
             )
             .withFixedExposedPort(port, port)
             .withExposedPorts(port)
+            .withFileSystemBind("$logPathOnHost", logPathInContainer, BindMode.READ_WRITE)
             .withFileSystemBind("$mountedPathOnHost", mountedPathInContainer, BindMode.READ_WRITE)
             .withFileSystemBind(narPathOnHost, narPathInContainer, BindMode.READ_ONLY)
             .waitingFor(HttpWaitStrategy().forPath("/nifi"))

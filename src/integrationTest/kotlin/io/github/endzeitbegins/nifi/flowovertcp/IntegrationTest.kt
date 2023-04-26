@@ -55,14 +55,16 @@ class IntegrationTest {
 
         val destinationDirectory = NiFiContainerProvider.mountedPathOnHost / "from-nifi"
 
+        var attributeFileCount = 0
         waitFor(
             duration = Duration.ofSeconds(300),
-            errorMessage = "Not all attributes were received after timeout has been reached!"
+            onError = { "Only $attributeFileCount of expected ${testSet.size} attribute files were received after timeout has been reached!" }
         ) {
             val attributeFiles = destinationDirectory
                 .listDirectoryEntries("*.attributes")
+            attributeFileCount = attributeFiles.size
 
-            attributeFiles.size >= testSet.size
+            attributeFileCount >= testSet.size
         }
 
         expect {
