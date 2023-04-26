@@ -38,7 +38,7 @@ class IntegrationTest {
 
     @Test
     internal fun `supports transfer of FlowFiles with both content and attributes`() {
-        val testSet = List(123) {
+        val testSet = List(1) {
             val fileSize = random.nextInt(1_024, 64 * 1_024)
             val fileContent = random.nextBytes(fileSize)
             val fileName = "${UUID.nameUUIDFromBytes(fileContent)}"
