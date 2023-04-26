@@ -1,6 +1,6 @@
 package io.github.endzeitbegins.nifi.flowovertcp.internal.codec.send
 
-import com.fasterxml.jackson.databind.ObjectMapper
+import io.github.endzeitbegins.nifi.flowovertcp.internal.codec.toJsonMap
 import io.github.endzeitbegins.nifi.flowovertcp.internal.utils.chunked
 import io.github.endzeitbegins.nifi.flowovertcp.internal.utils.concatenate
 import io.netty.channel.ChannelHandler
@@ -21,19 +21,19 @@ import java.nio.ByteOrder
 @ChannelHandler.Sharable
 internal object TransmittableFlowFileHandler : MessageToMessageEncoder<TransmittableFlowFile>() {
 
-    private val objectMapper = ObjectMapper()
 
     override fun encode(ctx: ChannelHandlerContext, msg: TransmittableFlowFile, out: MutableList<Any>) {
-        val attributesAsBytes = objectMapper.writeValueAsBytes(msg.attributes)
+        val attributesJson = msg.attributes.toJsonMap()
+        val attributesBytes = attributesJson.encodeToByteArray()
 
-        val attributesLength: Int = attributesAsBytes.size
+        val attributesLength: Int = attributesBytes.size
         val contentLength: Long = msg.contentLength
 
         val headerBytes = attributesLength.toByteRepresentation(byteOrder = ByteOrder.BIG_ENDIAN) +
                 contentLength.toByteRepresentation(byteOrder = ByteOrder.BIG_ENDIAN)
 
         val headerStream: InputStream = headerBytes.inputStream()
-        val attributesStream: InputStream = attributesAsBytes.inputStream()
+        val attributesStream: InputStream = attributesBytes.inputStream()
 
         val combinedStream = listOf(headerStream, attributesStream, msg.contentStream).concatenate()
         val chunkedStream = combinedStream.chunked()

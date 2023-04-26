@@ -26,7 +26,7 @@ internal sealed interface ReceivableFlowFile {
  */
 internal class ReceivableFlowFileAttributes(
     override val generatedId: String,
-    val attributes: Map<String, String>,
+    val attributes: Map<String, String?>,
     override val isLastFragment: Boolean,
 ) : ReceivableFlowFile
 

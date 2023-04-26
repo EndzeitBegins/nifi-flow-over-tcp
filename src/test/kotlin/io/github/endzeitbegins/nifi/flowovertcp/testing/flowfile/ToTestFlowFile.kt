@@ -1,7 +1,6 @@
 package io.github.endzeitbegins.nifi.flowovertcp.testing.flowfile
 
-import com.fasterxml.jackson.databind.ObjectMapper
-import com.fasterxml.jackson.module.kotlin.readValue
+import io.github.endzeitbegins.nifi.flowovertcp.internal.codec.parseJsonMap
 import org.apache.nifi.util.MockFlowFile
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
@@ -21,7 +20,7 @@ internal fun ByteArray.toTestFlowFile(): TestFlowFile {
     }
 
     val attributesJson = attributeBytes.toByteArray().decodeToString()
-    val attributes: Map<String, String> = ObjectMapper().readValue(attributesJson)
+    val attributes: Map<String, String?> = attributesJson.parseJsonMap()
 
     return TestFlowFile(attributes = attributes, content = content)
 }

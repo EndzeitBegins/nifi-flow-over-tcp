@@ -1,12 +1,10 @@
 package io.github.endzeitbegins.nifi.flowovertcp.internal.codec.receive
 
-import com.fasterxml.jackson.databind.ObjectMapper
-import com.fasterxml.jackson.module.kotlin.readValue
+import io.github.endzeitbegins.nifi.flowovertcp.internal.codec.parseJsonMap
 import io.netty.buffer.ByteBuf
 import io.netty.channel.ChannelHandler
 import io.netty.channel.ChannelHandlerContext
 import io.netty.handler.codec.ByteToMessageDecoder
-import io.netty.handler.stream.ChunkedWriteHandler
 import org.apache.nifi.flowfile.FlowFile
 import org.apache.nifi.logging.ComponentLog
 
@@ -85,7 +83,7 @@ internal class ReceivableFlowFileDecoder(
             readBytes(attributeBytes)
 
             val attributesJson = attributeBytes.decodeToString()
-            val attributes: Map<String, String> = ObjectMapper().readValue(attributesJson)
+            val attributes: Map<String, String?> = attributesJson.parseJsonMap()
 
             logger.debug("Parsed attributes: $attributes")
 

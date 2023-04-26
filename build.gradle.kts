@@ -6,6 +6,7 @@ import java.time.temporal.ChronoUnit
 plugins {
     java
     kotlin("jvm") version "1.8.20"
+    kotlin("plugin.serialization") version "1.8.20"
     id("io.github.lhotari.gradle-nar-plugin") version "0.5.1"
     signing
     `maven-publish`
@@ -49,13 +50,7 @@ dependencies {
     parentNar("org.apache.nifi:nifi-standard-services-api-nar:$niFiVersion")
 
     // JSON (de)serialization
-    val jacksonVersion = "2.15.0"
-    implementation("com.fasterxml.jackson.core:jackson-core:$jacksonVersion")
-    implementation("com.fasterxml.jackson.core:jackson-databind:$jacksonVersion")
-    implementation("com.fasterxml.jackson.module:jackson-module-kotlin:$jacksonVersion")
-
-    // utility libraries
-    implementation("commons-net:commons-net:3.9.0")
+    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.5.0")
 
     // testing
     testImplementation("org.junit.jupiter:junit-jupiter:5.9.2")
