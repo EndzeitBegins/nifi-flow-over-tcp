@@ -20,6 +20,7 @@ import strikt.java.size
 import java.nio.file.*
 import java.time.Duration
 import java.util.*
+import java.util.concurrent.TimeoutException
 import kotlin.io.path.*
 import kotlin.random.Random
 
@@ -58,7 +59,11 @@ class IntegrationTest {
         var attributeFileCount = 0
         waitFor(
             duration = Duration.ofSeconds(300),
-            onError = { "Only $attributeFileCount of expected ${testSet.size} attribute files were received after timeout has been reached!" }
+            onTimeout = {
+                TimeoutException(
+                    "Only $attributeFileCount of expected ${testSet.size} attribute files were received after timeout has been reached!"
+                )
+            }
         ) {
             val attributeFiles = destinationDirectory
                 .listDirectoryEntries("*.attributes")
