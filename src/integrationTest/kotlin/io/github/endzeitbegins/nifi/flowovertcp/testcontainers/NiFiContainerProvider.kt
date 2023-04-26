@@ -11,10 +11,13 @@ import org.testcontainers.containers.GenericContainer
 import org.testcontainers.containers.output.Slf4jLogConsumer
 import org.testcontainers.containers.wait.strategy.HttpWaitStrategy
 import java.net.ServerSocket
+import java.nio.file.Files
 import java.nio.file.Path
+import java.nio.file.attribute.PosixFilePermission
 import kotlin.io.path.Path
 import kotlin.io.path.absolutePathString
 import kotlin.io.path.div
+import kotlin.io.path.setPosixFilePermissions
 
 private val environment = System.getenv()
 
@@ -36,6 +39,25 @@ object NiFiContainerProvider {
 
     private const val logPathInContainer = "/opt/nifi/nifi-current/logs/"
     private val logPathOnHost = (mountedPathOnHost / "nifi-logs").toAbsolutePath()
+
+    init {
+        // TODO  !
+        val allowAll = setOf(
+            PosixFilePermission.OWNER_READ,
+            PosixFilePermission.OWNER_WRITE,
+            PosixFilePermission.OWNER_EXECUTE,
+            PosixFilePermission.GROUP_READ,
+            PosixFilePermission.GROUP_WRITE,
+            PosixFilePermission.GROUP_EXECUTE,
+            PosixFilePermission.OTHERS_READ,
+            PosixFilePermission.OTHERS_WRITE,
+            PosixFilePermission.OTHERS_EXECUTE,
+            )
+        mountedPathOnHost.setPosixFilePermissions(allowAll)
+        for (path in Files.list(mountedPathOnHost)) {
+            path.setPosixFilePermissions(allowAll)
+        }
+    }
 
     val container: GenericContainer<*> by lazy {
         val port: Int = ServerSocket(0).use { it.localPort }
