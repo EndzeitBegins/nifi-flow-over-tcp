@@ -34,8 +34,8 @@ object NiFiContainerProvider {
     const val mountedPathInContainer = "/tmp/mounted/"
     val mountedPathOnHost: Path = Path("src/integrationTest/resources/mounted-directory").toAbsolutePath()
 
-    const val logPathInContainer = "/opt/nifi/nifi-current/logs"
-    val logPathOnHost = mountedPathOnHost / "nifi-logs"
+    private const val logPathInContainer = "/opt/nifi/nifi-current/logs/"
+    private val logPathOnHost = (mountedPathOnHost / "nifi-logs").toAbsolutePath()
 
     val container: GenericContainer<*> by lazy {
         val port: Int = ServerSocket(0).use { it.localPort }
@@ -72,7 +72,15 @@ object NiFiContainerProvider {
 
         fixedPortContainer.start()
 
+        // TODO vvvv
+        val res1 = fixedPortContainer.execInContainer("ls -la /opt/nifi/nifi-current")
+        println(res1.stdout)
+        println(res1.stderr)
+        val res2 = fixedPortContainer.execInContainer("ls -la /opt/nifi/nifi-current/logs")
+        println(res2.stdout)
+        println(res2.stderr)
         fixedPortContainer.followOutput(Slf4jLogConsumer(LoggerFactory.getLogger("nifi-container-logs"))) // TODO ?!
+        // TODO ^^^^
 
 
         println("""
