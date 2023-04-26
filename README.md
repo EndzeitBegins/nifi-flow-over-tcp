@@ -50,8 +50,8 @@ A simple codec is used to transmit the FlowFiles over TCP.
 |-------------|---------------------------------------------------------|------------------------------------|------------------|
 | 4           | size in bytes of attributes as utf-8 encoded JSON (= m) | 0x00000010 (16)                    |                  |
 | 8           | size in bytes of content (= n)                          | 0x000000000000000a (10)            |                  |
-| n           | the FlowFile attributes as utf-8 encoded JSON           | 0x7b2268656c6c6f223a226e696669227d | {"hello":"nifi"} |
-| m           | the FlowFile content                                    | 0x48656c6c6f2054435021             | Hello TCP!       |
+| m           | the FlowFile attributes as utf-8 encoded JSON           | 0x7b2268656c6c6f223a226e696669227d | {"hello":"nifi"} |
+| n           | the FlowFile content                                    | 0x48656c6c6f2054435021             | Hello TCP!       |
 
 #### ListenFlowFromTCP
 
