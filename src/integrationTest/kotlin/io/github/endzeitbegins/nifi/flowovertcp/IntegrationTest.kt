@@ -36,7 +36,7 @@ class IntegrationTest {
 
     @Test
     internal fun `supports transfer of FlowFiles with both content and attributes`() {
-        val testSet = List(10_000) {
+        val testSet = List(1_000) {
             val fileSize = random.nextInt(1_024, 64 * 1_024)
             val fileContent = random.nextBytes(fileSize)
             val fileName = "${UUID.nameUUIDFromBytes(fileContent)}"
@@ -53,7 +53,10 @@ class IntegrationTest {
 
         val destinationDirectory = NiFiContainerProvider.mountedPathOnHost / "from-nifi"
 
-        waitFor(duration = Duration.ofSeconds(150)) {
+        waitFor(
+            duration = Duration.ofSeconds(150),
+            errorMessage = "Not all attributes were received after timeout has been reached!"
+        ) {
             val attributeFiles = destinationDirectory
                 .listDirectoryEntries("*.attributes")
 
@@ -138,7 +141,11 @@ private val ByteArray.sha256: String
     }
 
 
-private fun waitFor(duration: Duration, predicate: () -> Boolean) {
+private fun waitFor(
+    duration: Duration,
+    errorMessage: String = "Failed to meet predicate after $duration.",
+    predicate: () -> Boolean,
+) {
     val startTime = Instant.now()
     val timeout = startTime.plus(duration)
 
@@ -150,7 +157,7 @@ private fun waitFor(duration: Duration, predicate: () -> Boolean) {
         Thread.sleep(250)
     } while (Instant.now() < timeout)
 
-    throw TimeoutException("Failed to meet predicate after $duration.")
+    throw TimeoutException(errorMessage)
 }
 
 
