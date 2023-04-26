@@ -61,7 +61,6 @@ object NiFiContainerProvider {
             .withFileSystemBind(narPathOnHost, narPathInContainer, BindMode.READ_ONLY)
             .waitingFor(HttpWaitStrategy().forPath("/nifi"))
 
-        fixedPortContainer.followOutput(Slf4jLogConsumer(LoggerFactory.getLogger("nifi-container-logs"))) // TODO ?!
 
         println("""
             ############################################################
@@ -72,6 +71,9 @@ object NiFiContainerProvider {
         """.trimIndent())
 
         fixedPortContainer.start()
+
+        fixedPortContainer.followOutput(Slf4jLogConsumer(LoggerFactory.getLogger("nifi-container-logs"))) // TODO ?!
+
 
         println("""
             ############################################################
