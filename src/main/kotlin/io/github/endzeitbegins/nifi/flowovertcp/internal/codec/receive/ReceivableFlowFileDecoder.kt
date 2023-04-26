@@ -11,7 +11,7 @@ import org.apache.nifi.logging.ComponentLog
 /**
  * A custom [ChannelHandler] that converts the received bytes into [ReceivableFlowFile] objects.
  *
- * Use in conjunction with [ReceivableFlowFileHandler] to receives [FlowFile]s with arbitrary large content.
+ * Use in conjunction with [ReceivableFlowFileHandler] to receive [FlowFile]s with arbitrary large content.
  */
 internal class ReceivableFlowFileDecoder(
     private val logger: ComponentLog,

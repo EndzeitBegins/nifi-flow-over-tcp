@@ -1,9 +1,9 @@
 package io.github.endzeitbegins.nifi.flowovertcp.internal.codec.receive
 
+import io.netty.channel.ChannelHandler
 import io.netty.channel.ChannelHandlerContext
 import io.netty.channel.SimpleChannelInboundHandler
 import org.apache.nifi.flowfile.FlowFile
-import org.apache.nifi.logging.ComponentLog
 import org.apache.nifi.processor.ProcessSession
 import org.apache.nifi.processor.ProcessSessionFactory
 import org.apache.nifi.processor.Relationship
@@ -12,15 +12,14 @@ import java.net.InetSocketAddress
 import java.util.concurrent.atomic.AtomicReference
 
 /**
- * TODO
- *  Add documentation
- *  Refactor to use event passing, move session handling to onTrigger
+ * A custom [ChannelHandler] that accepts [ReceivableFlowFile] objects and transforms them into [FlowFile]s.
+ *
+ * Use in conjunction with [ReceivableFlowFileDecoder] to receive [FlowFile]s with arbitrary large content.
  */
 internal class ReceivableFlowFileHandler(
     private val addNetworkInformationAttributes: Boolean,
     private val processSessionFactoryReference: AtomicReference<ProcessSessionFactory>,
-    private val targetRelationship: Relationship,
-    private val logger: ComponentLog
+    private val targetRelationship: Relationship
 ) : SimpleChannelInboundHandler<ReceivableFlowFile>() {
 
     private var activeId: String? = null
