@@ -1,6 +1,6 @@
 package io.github.endzeitbegins.nifi.flowovertcp.gateways
 
-import io.github.endzeitbegins.nifi.flowovertcp.models.Processor
+import io.github.endzeitbegins.nifi.flowovertcp.models.*
 import io.github.endzeitbegins.nifi.flowovertcp.testcontainers.NiFiContainerProvider
 import io.ktor.client.*
 import io.ktor.client.call.*
@@ -57,9 +57,6 @@ object KtorNiFiApiGateway : NiFiApiGateway {
             ),
         )
 
-        val testme = Json.encodeToString(body)
-        println(testme)
-
         val createdProcessorEntity = runBlocking {
             val response = client.post("$niFiUrl/process-groups/$parentProcessGroupId/processors") {
                 contentType(ContentType.Application.Json)
@@ -114,7 +111,7 @@ object KtorNiFiApiGateway : NiFiApiGateway {
 
     override fun startProcessGroup(id: String) {
         runBlocking {
-            val result = client.put("$niFiUrl/flow/process-groups/$id") {
+            client.put("$niFiUrl/flow/process-groups/$id") {
                 contentType(ContentType.Application.Json)
                 setBody(
                     ScheduleComponentsEntity(
@@ -123,8 +120,6 @@ object KtorNiFiApiGateway : NiFiApiGateway {
                     )
                 )
             }
-
-            println(result.bodyAsText())
         }
     }
 }

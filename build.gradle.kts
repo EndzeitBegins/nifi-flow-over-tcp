@@ -89,6 +89,7 @@ testing {
                 implementation(tasks.nar.map { dependencyFactory.create(it.outputs.files) })
 
                 implementation("io.strikt:strikt-core:0.34.1")
+                implementation("io.strikt:strikt-jvm:0.34.1")
                 implementation("org.slf4j:slf4j-simple:2.0.7")
                 implementation("org.testcontainers:testcontainers:1.17.6")
 
