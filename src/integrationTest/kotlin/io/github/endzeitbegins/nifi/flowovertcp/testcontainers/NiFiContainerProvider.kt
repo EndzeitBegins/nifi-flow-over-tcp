@@ -104,6 +104,12 @@ object NiFiContainerProvider {
     }
 
     private fun Path.allowAccess() {
+        val posix777 = setOf(
+            OWNER_READ, OWNER_WRITE, OWNER_EXECUTE,
+            GROUP_READ, GROUP_WRITE, GROUP_EXECUTE,
+            OTHERS_READ, OTHERS_WRITE, OTHERS_EXECUTE,
+        )
+
         val rootDirectory = this
         rootDirectory.setPosixFilePermissions(posix777)
 
@@ -111,10 +117,4 @@ object NiFiContainerProvider {
             childDirectory.setPosixFilePermissions(posix777)
         }
     }
-
-    private val posix777 = setOf(
-        OWNER_READ, OWNER_WRITE, OWNER_EXECUTE,
-        GROUP_READ, GROUP_WRITE, GROUP_EXECUTE,
-        OTHERS_READ, OTHERS_WRITE, OTHERS_EXECUTE,
-    )
 }
