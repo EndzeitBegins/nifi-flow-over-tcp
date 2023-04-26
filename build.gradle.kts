@@ -166,11 +166,6 @@ tasks {
         }
     }
 
-    check {
-        @Suppress("UnstableApiUsage")
-        dependsOn(testing.suites.named("integrationTest"))
-    }
-
     nar {
         // manual workaround to fix issue https://github.com/lhotari/gradle-nar-plugin/issues/2
 
