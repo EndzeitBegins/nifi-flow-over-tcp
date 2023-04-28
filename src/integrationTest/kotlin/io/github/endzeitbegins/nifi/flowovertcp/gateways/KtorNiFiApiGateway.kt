@@ -8,12 +8,10 @@ import io.ktor.client.engine.cio.*
 import io.ktor.client.plugins.contentnegotiation.*
 import io.ktor.client.plugins.logging.*
 import io.ktor.client.request.*
-import io.ktor.client.statement.*
 import io.ktor.http.*
 import io.ktor.serialization.kotlinx.json.*
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 
 object KtorNiFiApiGateway : NiFiApiGateway {
@@ -32,6 +30,39 @@ object KtorNiFiApiGateway : NiFiApiGateway {
 
     private val niFiUrl = "http://localhost:" + NiFiContainerProvider.port + "/nifi-api"
 
+    override fun createProcessGroup(
+        parentProcessGroupId: String,
+        name: String,
+        position: Position,
+    ): ProcessGroup {
+        val body = ProcessGroupEntity(
+            id = null,
+            component = ProcessGroupDTO(
+                name = name,
+                position = position.toPositionDTO(),
+            ),
+            revision = RevisionDTO(
+                clientId = "fixed-client-id",
+                version = 0,
+            ),
+        )
+
+        val createdProcessGroupEntity = runBlocking {
+            val response = client.post("$niFiUrl/process-groups/$parentProcessGroupId/process-groups") {
+                contentType(ContentType.Application.Json)
+                setBody(body)
+            }
+
+            response.body<ProcessGroupEntity>()
+        }
+
+        return ProcessGroup(
+            parentProcessGroupId = parentProcessGroupId,
+            id = checkNotNull(createdProcessGroupEntity.id),
+            name = createdProcessGroupEntity.component.name,
+        )
+    }
+
     override fun createProcessor(
         parentProcessGroupId: String,
         type: String,
@@ -47,7 +78,10 @@ object KtorNiFiApiGateway : NiFiApiGateway {
                 type = type,
                 config = ProcessorConfigDTO(
                     properties = properties,
-                    autoTerminatedRelationships = autoTerminatedRelationships
+                    schedulingPeriod = if (type.endsWith("ListFile")) "5 sec" else "0 sec",
+                    concurrentlySchedulableTaskCount = if(type.endsWith("AttributesToJSON")) "4" else "1",
+                    penaltyDuration = "2 sec",
+                    autoTerminatedRelationships = autoTerminatedRelationships,
                 ),
                 position = position.toPositionDTO(),
             ),
@@ -83,6 +117,9 @@ object KtorNiFiApiGateway : NiFiApiGateway {
                 setBody(
                     ConnectionEntity(
                         component = ConnectionDTO(
+                            backPressureDataSizeThreshold = null,
+                            backPressureObjectThreshold = null,
+
                             source = ConnectableDTO(
                                 groupId = source.parentProcessGroupId,
                                 id = source.sourceId,
@@ -109,14 +146,30 @@ object KtorNiFiApiGateway : NiFiApiGateway {
         return Connection
     }
 
+    override fun updateConnection(
+        id: String,
+        backPressureDataSizeThreshold: String?,
+        backPressureObjectThreshold: String?,
+    ): Connection {
+        TODO("Not yet implemented")
+    }
+
     override fun startProcessGroup(id: String) {
+        changeProcessGroupRunStatus(id, "RUNNING")
+    }
+
+    override fun stopProcessGroup(id: String) {
+        changeProcessGroupRunStatus(id, "STOPPED")
+    }
+
+    private fun changeProcessGroupRunStatus(id: String, status: String) {
         runBlocking {
             client.put("$niFiUrl/flow/process-groups/$id") {
                 contentType(ContentType.Application.Json)
                 setBody(
                     ScheduleComponentsEntity(
                         id = id,
-                        state = "RUNNING",
+                        state = status,
                     )
                 )
             }
@@ -128,23 +181,16 @@ private fun Position.toPositionDTO(): PositionDTO =
     PositionDTO(x = x.toDouble(), y = y.toDouble())
 
 @Serializable
-private data class ConnectionEntity(
+private data class ProcessGroupEntity(
+    val id: String?,
     val revision: RevisionDTO,
-    val component: ConnectionDTO,
+    val component: ProcessGroupDTO,
 )
 
 @Serializable
-private data class ConnectionDTO(
-    val source: ConnectableDTO,
-    val destination: ConnectableDTO,
-    val selectedRelationships: Set<String>,
-)
-
-@Serializable
-private data class ConnectableDTO(
-    val groupId: String,
-    val id: String,
-    val type: String,
+private data class ProcessGroupDTO(
+    val name: String,
+    val position: PositionDTO,
 )
 
 @Serializable
@@ -177,7 +223,32 @@ private data class RevisionDTO(
 @Serializable
 private data class ProcessorConfigDTO(
     val properties: Map<String, String?>,
+    val schedulingPeriod: String,
+    val concurrentlySchedulableTaskCount: String,
+    val penaltyDuration: String,
     val autoTerminatedRelationships: Set<String> = emptySet(),
+)
+
+@Serializable
+private data class ConnectionEntity(
+    val revision: RevisionDTO,
+    val component: ConnectionDTO,
+)
+
+@Serializable
+private data class ConnectionDTO(
+    val backPressureDataSizeThreshold: String?,
+    val backPressureObjectThreshold: String?,
+    val source: ConnectableDTO,
+    val destination: ConnectableDTO,
+    val selectedRelationships: Set<String>,
+)
+
+@Serializable
+private data class ConnectableDTO(
+    val groupId: String,
+    val id: String,
+    val type: String,
 )
 
 @Serializable
