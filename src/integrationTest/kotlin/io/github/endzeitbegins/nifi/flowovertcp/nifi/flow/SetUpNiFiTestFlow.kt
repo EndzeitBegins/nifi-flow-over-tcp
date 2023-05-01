@@ -1,18 +1,18 @@
 package io.github.endzeitbegins.nifi.flowovertcp.nifi.flow
 
-import io.github.endzeitbegins.nifi.flowovertcp.gateways.NiFiApiGateway
-import io.github.endzeitbegins.nifi.flowovertcp.models.Position
+import io.github.endzeitbegins.nifi.flowovertcp.nifi.gateways.NiFiApiGateway
+import io.github.endzeitbegins.nifi.flowovertcp.nifi.flow.models.Position
 import io.github.endzeitbegins.nifi.flowovertcp.nifi.createConnection
 import io.github.endzeitbegins.nifi.flowovertcp.testcontainers.NiFiContainerProvider
 import java.util.*
 
-internal fun NiFiApiGateway.setUpNiFiTestFlow(): NiFiTestFlow {
+internal fun NiFiApiGateway.setUpNiFiTestFlow(socketPort: Int): NiFiTestFlow {
     val parentProcessGroup = createProcessGroup(
         parentProcessGroupId = "root",
         name = "${UUID.randomUUID()}",
     )
 
-    val processors = setUpTestProcessors(parentProcessGroup.id)
+    val processors = setUpTestProcessors(parentProcessGroupId = parentProcessGroup.id, socketPort = socketPort)
 
     with(processors) {
         createConnection(listFiles, fetchAttributesFile, setOf("success"))
@@ -42,7 +42,7 @@ internal fun NiFiApiGateway.setUpNiFiTestFlow(): NiFiTestFlow {
     )
 }
 
-private fun NiFiApiGateway.setUpTestProcessors(parentProcessGroupId: String): TestProcessors {
+private fun NiFiApiGateway.setUpTestProcessors(parentProcessGroupId: String, socketPort: Int): TestProcessors {
     val processorListFiles = createProcessor(
         parentProcessGroupId = parentProcessGroupId,
         type = "org.apache.nifi.processors.standard.ListFile",
@@ -122,7 +122,7 @@ private fun NiFiApiGateway.setUpTestProcessors(parentProcessGroupId: String): Te
         type = "io.github.endzeitbegins.nifi.flowovertcp.PutFlowToTCP",
         name = "transferFlowFile",
         properties = mapOf(
-            "Port" to "31337"
+            "Port" to "$socketPort"
         ),
         position = Position(x = 0, y = 1000),
         autoTerminatedRelationships = setOf("success")
@@ -133,7 +133,7 @@ private fun NiFiApiGateway.setUpTestProcessors(parentProcessGroupId: String): Te
         type = "io.github.endzeitbegins.nifi.flowovertcp.ListenFlowFromTCP",
         name = "receiveFlowFile",
         properties = mapOf(
-            "Port" to "31337"
+            "Port" to "$socketPort"
         ),
         position = Position(x = 600, y = 0),
     )

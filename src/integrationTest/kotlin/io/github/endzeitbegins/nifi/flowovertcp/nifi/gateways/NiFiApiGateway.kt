@@ -1,6 +1,6 @@
-package io.github.endzeitbegins.nifi.flowovertcp.gateways
+package io.github.endzeitbegins.nifi.flowovertcp.nifi.gateways
 
-import io.github.endzeitbegins.nifi.flowovertcp.models.*
+import io.github.endzeitbegins.nifi.flowovertcp.nifi.flow.models.*
 
 interface NiFiApiGateway {
 
@@ -9,6 +9,10 @@ interface NiFiApiGateway {
         name: String,
         position: Position = defaultPosition,
     ): ProcessGroup
+
+    fun startProcessGroup(id: String)
+
+    fun stopProcessGroup(id: String)
 
     fun createProcessor(
         parentProcessGroupId: String,
@@ -19,20 +23,20 @@ interface NiFiApiGateway {
         autoTerminatedRelationships: Set<String> = emptySet(),
     ): Processor
 
+    fun startProcessor(id: String): Unit
+
+    fun stopProcessor(id: String): Unit
+
     fun createConnection(
         parentProcessGroupId: String,
         source: ConnectionSource,
         destination: ConnectionDestination,
     ): Connection
 
-    fun updateConnection(
+    fun updateConnectionBackPressure(
         id: String,
         backPressureDataSizeThreshold: String? = null,
         backPressureObjectThreshold: String? = null,
     ): Connection
-
-    fun startProcessGroup(id: String)
-
-    fun stopProcessGroup(id: String)
 }
 

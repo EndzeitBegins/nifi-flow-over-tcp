@@ -1,4 +1,4 @@
-package io.github.endzeitbegins.nifi.flowovertcp.models
+package io.github.endzeitbegins.nifi.flowovertcp.nifi.flow.models
 
 sealed interface ConnectionDestination {
     val parentProcessGroupId: String

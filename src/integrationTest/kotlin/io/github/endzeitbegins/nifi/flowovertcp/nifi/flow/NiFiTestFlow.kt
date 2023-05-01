@@ -1,7 +1,7 @@
 package io.github.endzeitbegins.nifi.flowovertcp.nifi.flow
 
-import io.github.endzeitbegins.nifi.flowovertcp.models.ProcessGroup
-import io.github.endzeitbegins.nifi.flowovertcp.models.Processor
+import io.github.endzeitbegins.nifi.flowovertcp.nifi.flow.models.ProcessGroup
+import io.github.endzeitbegins.nifi.flowovertcp.nifi.flow.models.Processor
 
 internal data class NiFiTestFlow(
     val rootProcessGroup: ProcessGroup,
