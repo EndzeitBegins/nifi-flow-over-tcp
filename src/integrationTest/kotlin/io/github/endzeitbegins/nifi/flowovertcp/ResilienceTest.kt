@@ -47,6 +47,11 @@ class ResilienceTest {
             `expect that FlowFiles were transferred`(testSet)
         }
 
+    @Test
+    fun `supports backpressure from downstream`() {
+        TODO("Not yet implemented")
+    }
+
     private fun generateTestSeed(random: Random, flowFileCount: Int) = List(flowFileCount) { index ->
         val fileName = "generated-$index"
         val fileSize = random.nextInt(1_024, 64 * 1_024)
