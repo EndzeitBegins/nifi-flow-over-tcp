@@ -1,7 +1,6 @@
-package io.github.endzeitbegins.nifi.flowovertcp.gateways
+package io.github.endzeitbegins.nifi.flowovertcp.nifi.gateways
 
-import io.github.endzeitbegins.nifi.flowovertcp.models.*
-import io.github.endzeitbegins.nifi.flowovertcp.testcontainers.NiFiContainerProvider
+import io.github.endzeitbegins.nifi.flowovertcp.nifi.flow.models.*
 import io.ktor.client.*
 import io.ktor.client.call.*
 import io.ktor.client.engine.cio.*
@@ -14,7 +13,12 @@ import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 
-object KtorNiFiApiGateway : NiFiApiGateway {
+
+class KtorNiFiApiGateway(private val niFiApiUrl: String) : NiFiApiGateway {
+
+    constructor(port: Int): this(
+        niFiApiUrl = "http://localhost:$port/nifi-api"
+    )
 
     private val client = HttpClient(CIO) {
         install(Logging)
@@ -27,8 +31,6 @@ object KtorNiFiApiGateway : NiFiApiGateway {
             })
         }
     }
-
-    private val niFiUrl = "http://localhost:" + NiFiContainerProvider.port + "/nifi-api"
 
     override fun createProcessGroup(
         parentProcessGroupId: String,
@@ -48,7 +50,7 @@ object KtorNiFiApiGateway : NiFiApiGateway {
         )
 
         val createdProcessGroupEntity = runBlocking {
-            val response = client.post("$niFiUrl/process-groups/$parentProcessGroupId/process-groups") {
+            val response = client.post("$niFiApiUrl/process-groups/$parentProcessGroupId/process-groups") {
                 contentType(ContentType.Application.Json)
                 setBody(body)
             }
@@ -61,6 +63,14 @@ object KtorNiFiApiGateway : NiFiApiGateway {
             id = checkNotNull(createdProcessGroupEntity.id),
             name = createdProcessGroupEntity.component.name,
         )
+    }
+
+    override fun startProcessGroup(id: String) {
+        changeProcessGroupRunStatus(id, "RUNNING")
+    }
+
+    override fun stopProcessGroup(id: String) {
+        changeProcessGroupRunStatus(id, "STOPPED")
     }
 
     override fun createProcessor(
@@ -79,7 +89,7 @@ object KtorNiFiApiGateway : NiFiApiGateway {
                 config = ProcessorConfigDTO(
                     properties = properties,
                     schedulingPeriod = if (type.endsWith("ListFile")) "5 sec" else "0 sec",
-                    concurrentlySchedulableTaskCount = if(type.endsWith("AttributesToJSON")) "4" else "1",
+                    concurrentlySchedulableTaskCount = if (type.endsWith("AttributesToJSON")) "4" else "1",
                     penaltyDuration = "2 sec",
                     autoTerminatedRelationships = autoTerminatedRelationships,
                 ),
@@ -92,7 +102,7 @@ object KtorNiFiApiGateway : NiFiApiGateway {
         )
 
         val createdProcessorEntity = runBlocking {
-            val response = client.post("$niFiUrl/process-groups/$parentProcessGroupId/processors") {
+            val response = client.post("$niFiApiUrl/process-groups/$parentProcessGroupId/processors") {
                 contentType(ContentType.Application.Json)
                 setBody(body)
             }
@@ -106,13 +116,21 @@ object KtorNiFiApiGateway : NiFiApiGateway {
         )
     }
 
+    override fun startProcessor(id: String) {
+        changeProcessorRunStatus(id, "RUNNING")
+    }
+
+    override fun stopProcessor(id: String) {
+       changeProcessorRunStatus(id, "STOPPED")
+    }
+
     override fun createConnection(
         parentProcessGroupId: String,
         source: ConnectionSource,
         destination: ConnectionDestination,
     ): Connection {
         runBlocking {
-            client.post("$niFiUrl/process-groups/$parentProcessGroupId/connections") {
+            client.post("$niFiApiUrl/process-groups/$parentProcessGroupId/connections") {
                 contentType(ContentType.Application.Json)
                 setBody(
                     ConnectionEntity(
@@ -146,29 +164,37 @@ object KtorNiFiApiGateway : NiFiApiGateway {
         return Connection
     }
 
-    override fun updateConnection(
+    override fun updateConnectionBackPressure(
         id: String,
         backPressureDataSizeThreshold: String?,
         backPressureObjectThreshold: String?,
     ): Connection {
-        TODO("Not yet implemented")
-    }
-
-    override fun startProcessGroup(id: String) {
-        changeProcessGroupRunStatus(id, "RUNNING")
-    }
-
-    override fun stopProcessGroup(id: String) {
-        changeProcessGroupRunStatus(id, "STOPPED")
+        TODO("Implement and use as part of #15")
     }
 
     private fun changeProcessGroupRunStatus(id: String, status: String) {
         runBlocking {
-            client.put("$niFiUrl/flow/process-groups/$id") {
+            client.put("$niFiApiUrl/flow/process-groups/$id") {
                 contentType(ContentType.Application.Json)
                 setBody(
                     ScheduleComponentsEntity(
                         id = id,
+                        state = status,
+                    )
+                )
+            }
+        }
+    }
+
+    private fun changeProcessorRunStatus(id: String, status: String) {
+        runBlocking {
+            val processorEntity: ProcessorEntity = client.get("$niFiApiUrl/processors/$id").body()
+
+            client.put("$niFiApiUrl/processors/$id/run-status") {
+                contentType(ContentType.Application.Json)
+                setBody(
+                    ProcessorRunStatusEntity(
+                        revision = processorEntity.revision,
                         state = status,
                     )
                 )
@@ -254,5 +280,11 @@ private data class ConnectableDTO(
 @Serializable
 private data class ScheduleComponentsEntity(
     val id: String,
+    val state: String,
+)
+
+@Serializable
+private data class ProcessorRunStatusEntity(
+    val revision: RevisionDTO,
     val state: String,
 )

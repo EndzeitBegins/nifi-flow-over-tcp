@@ -1,4 +1,4 @@
-package io.github.endzeitbegins.nifi.flowovertcp.models
+package io.github.endzeitbegins.nifi.flowovertcp.nifi.flow.models
 
 val defaultPosition = Position(x = 0, y = 0)
 
