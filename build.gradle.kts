@@ -5,7 +5,7 @@ import java.time.temporal.ChronoUnit
 
 plugins {
     java
-    kotlin("jvm") version "1.8.20"
+    kotlin("jvm") version "1.8.21"
     kotlin("plugin.serialization") version "1.8.20"
     id("io.github.lhotari.gradle-nar-plugin") version "0.5.1"
     signing
