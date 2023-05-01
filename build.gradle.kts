@@ -4,13 +4,12 @@ import java.time.Instant
 import java.time.temporal.ChronoUnit
 
 plugins {
-    java
-    kotlin("jvm") version "1.8.21"
-    kotlin("plugin.serialization") version "1.8.20"
-    id("io.github.lhotari.gradle-nar-plugin") version "0.5.1"
+    alias(libs.plugins.kotlin.jvm)
+    alias(libs.plugins.kotlin.serialization)
+    alias(libs.plugins.narPlugin)
     signing
     `maven-publish`
-    id("io.github.gradle-nexus.publish-plugin") version "1.3.0"
+    alias(libs.plugins.publishPlugin)
 }
 
 repositories {
@@ -22,11 +21,11 @@ repositories {
 group = "io.github.endzeitbegins"
 val artifactName = "nifi-flow-over-tcp"
 
-val niFiVersion = "1.21.0"
-
 java {
     toolchain {
-        languageVersion.set(JavaLanguageVersion.of(8))
+        languageVersion.set(
+            libs.versions.java.map { version -> JavaLanguageVersion.of(version) }
+        )
     }
 }
 
@@ -36,17 +35,17 @@ kotlin {
 
 dependencies {
     // Apache NiFi
-    implementation("org.apache.nifi:nifi-api:$niFiVersion")
-    implementation("org.apache.nifi:nifi-utils:$niFiVersion")
+    implementation(libs.nifi.api)
+    implementation(libs.nifi.utils)
     // former nifi-processor-utils - see https://issues.apache.org/jira/browse/NIFI-9610
-    implementation("org.apache.nifi:nifi-event-listen:$niFiVersion")
-    implementation("org.apache.nifi:nifi-event-put:$niFiVersion")
+    implementation(libs.nifi.eventListen)
+    implementation(libs.nifi.eventPut)
 
     // - NAR dependency
-    parentNar("org.apache.nifi:nifi-standard-services-api-nar:$niFiVersion")
+    parentNar(libs.nifi.standardServicesApiNar)
 
     // JSON (de)serialization
-    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.5.0")
+    implementation(libs.kotlinx.serialization.json)
 }
 
 testing {
@@ -56,10 +55,10 @@ testing {
             useJUnitJupiter()
 
             dependencies {
-                implementation("io.strikt:strikt-core:0.34.1")
-                implementation("org.apache.nifi:nifi-mock:$niFiVersion")
-                implementation("org.slf4j:slf4j-simple:2.0.7")
-                implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.6.4")
+                implementation(libs.nifi.mock)
+                implementation.bundle(libs.bundles.strikt)
+                implementation(libs.kotlinx.coroutines.core)
+                implementation(libs.slf4j.simple)
             }
         }
 
@@ -79,7 +78,7 @@ testing {
                     testTask.configure {
                         shouldRunAfter(test)
 
-                        environment("nifi.version", niFiVersion)
+                        environment("nifi.version", libs.versions.nifi.get())
                     }
                 }
             }
@@ -88,16 +87,10 @@ testing {
                 // include build .nar artifact to integrate into the Docker container
                 implementation(tasks.nar.map { dependencyFactory.create(it.outputs.files) })
 
-                implementation("io.strikt:strikt-core:0.34.1")
-                implementation("io.strikt:strikt-jvm:0.34.1")
-                implementation("org.slf4j:slf4j-simple:2.0.7")
-                implementation("org.testcontainers:testcontainers:1.17.6")
-
-                implementation("io.ktor:ktor-client-core:2.2.3")
-                implementation("io.ktor:ktor-client-cio:2.2.3")
-                implementation("io.ktor:ktor-client-logging:2.2.3")
-                implementation("io.ktor:ktor-client-content-negotiation:2.2.3")
-                implementation("io.ktor:ktor-serialization-kotlinx-json:2.2.3")
+                implementation.bundle(libs.bundles.strikt)
+                implementation.bundle(libs.bundles.ktor)
+                implementation(libs.testing.testcontainers)
+                implementation(libs.slf4j.simple)
             }
         }
     }
@@ -148,7 +141,7 @@ publishing {
 }
 
 nexusPublishing {
-    repositories {
+    this.repositories {
         sonatype {
             nexusUrl.set(uri("https://s01.oss.sonatype.org/service/local/"))
             snapshotRepositoryUrl.set(uri("https://s01.oss.sonatype.org/content/repositories/snapshots/"))
@@ -179,8 +172,8 @@ tasks {
                     <groupId>$group</groupId>
                     <artifactId>$artifactName</artifactId>
                     <version>${project.version}</version>
-                    <systemApiVersion>${niFiVersion}</systemApiVersion>${
-                    if (parentNarDependency != null) """
+                    <systemApiVersion>${libs.versions.nifi.get()}</systemApiVersion>${
+                if (parentNarDependency != null) """
                         <parentNar>
                             <groupId>${parentNarDependency.group}</groupId>
                             <artifactId>${parentNarDependency.name}</artifactId>
@@ -210,7 +203,7 @@ tasks {
     }
 }
 
-fun DependencyHandlerScope.parentNar(parentNarDependency: String) {
+fun <P: ExternalDependency> DependencyHandlerScope.parentNar(parentNarDependency: Provider<P>) {
     nar(parentNarDependency)
     testImplementation(parentNarDependency)
 }
