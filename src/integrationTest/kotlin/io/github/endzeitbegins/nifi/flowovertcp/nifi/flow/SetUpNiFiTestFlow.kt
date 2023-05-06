@@ -1,48 +1,32 @@
 package io.github.endzeitbegins.nifi.flowovertcp.nifi.flow
 
-import io.github.endzeitbegins.nifi.flowovertcp.nifi.gateways.NiFiApiGateway
-import io.github.endzeitbegins.nifi.flowovertcp.nifi.flow.models.Position
 import io.github.endzeitbegins.nifi.flowovertcp.nifi.createConnection
+import io.github.endzeitbegins.nifi.flowovertcp.nifi.flow.models.Position
+import io.github.endzeitbegins.nifi.flowovertcp.nifi.gateways.NiFiApiGateway
 import io.github.endzeitbegins.nifi.flowovertcp.testcontainers.NiFiContainerProvider
 import java.util.*
 
-internal fun NiFiApiGateway.setUpNiFiTestFlow(socketPort: Int): NiFiTestFlow {
+internal fun NiFiApiGateway.setUpNiFiTestFlow(socketPort: Int, startProcessGroup: Boolean): NiFiTestFlow {
     val parentProcessGroup = createProcessGroup(
         parentProcessGroupId = "root",
         name = "${UUID.randomUUID()}",
     )
 
     val processors = setUpTestProcessors(parentProcessGroupId = parentProcessGroup.id, socketPort = socketPort)
+    val connections = setUpTestConnections(processors)
 
-    with(processors) {
-        createConnection(listFiles, fetchAttributesFile, setOf("success"))
-        createConnection(fetchAttributesFile, fetchAttributesFile, setOf("not.found", "permission.denied", "failure"))
-        createConnection(fetchAttributesFile, readContentJsonAsAttributes, setOf("success"))
-        createConnection(readContentJsonAsAttributes, readContentJsonAsAttributes, setOf("failure"))
-        createConnection(readContentJsonAsAttributes, fetchContentFile, setOf("success"))
-        createConnection(fetchContentFile, fetchContentFile, setOf("not.found", "permission.denied", "failure"))
-        createConnection(fetchContentFile, computeHash, setOf("success"))
-        createConnection(computeHash, transferFlowFile, setOf("success"))
-        createConnection(transferFlowFile, transferFlowFile, setOf("failure"))
-        createConnection(receiveFlowFile, adjustFilenameForContentFile, setOf("success"))
-        createConnection(adjustFilenameForContentFile, storeContent, setOf("success"))
-        createConnection(storeContent, storeContent, setOf("failure"))
-        createConnection(storeContent, writeAttributesAsJsonInContent, setOf("success"))
-        createConnection(writeAttributesAsJsonInContent, writeAttributesAsJsonInContent, setOf("failure"))
-        createConnection(writeAttributesAsJsonInContent, adjustFilenameForAttributesFile, setOf("success"))
-        createConnection(adjustFilenameForAttributesFile, storeAttributes, setOf("success"))
-        createConnection(storeAttributes, storeAttributes, setOf("failure"))
+    if (startProcessGroup) {
+        startProcessGroup(parentProcessGroup.id)
     }
-
-    startProcessGroup(parentProcessGroup.id)
 
     return NiFiTestFlow(
         rootProcessGroup = parentProcessGroup,
-        processors = processors
+        processors = processors,
+        connections = connections
     )
 }
 
-private fun NiFiApiGateway.setUpTestProcessors(parentProcessGroupId: String, socketPort: Int): TestProcessors {
+private fun NiFiApiGateway.setUpTestProcessors(parentProcessGroupId: String, socketPort: Int): TestFlowProcessors {
     val processorListFiles = createProcessor(
         parentProcessGroupId = parentProcessGroupId,
         type = "org.apache.nifi.processors.standard.ListFile",
@@ -189,7 +173,7 @@ private fun NiFiApiGateway.setUpTestProcessors(parentProcessGroupId: String, soc
         autoTerminatedRelationships = setOf("success")
     )
 
-    return TestProcessors(
+    return TestFlowProcessors(
         listFiles = processorListFiles,
         fetchAttributesFile = processorFetchAttributesFile,
         readContentJsonAsAttributes = processorReadContentJsonAsAttributes,
@@ -202,5 +186,61 @@ private fun NiFiApiGateway.setUpTestProcessors(parentProcessGroupId: String, soc
         writeAttributesAsJsonInContent = processorStoreAttributesAsJsonInContent,
         adjustFilenameForAttributesFile = processorAdjustFilenameForAttributesFile,
         storeAttributes = processorStoreAttributes
+    )
+}
+
+private fun NiFiApiGateway.setUpTestConnections(processors: TestFlowProcessors) = with(processors) {
+    val connectionFromListFilesToFetchAttributesFile =
+        createConnection(listFiles, fetchAttributesFile, setOf("success"))
+    val connectionFromFetchAttributesFileToFetchAttributesFile =
+        createConnection(fetchAttributesFile, fetchAttributesFile, setOf("not.found", "permission.denied", "failure"))
+    val connectionFromFetchAttributesFileToReadContentJsonAsAttributes =
+        createConnection(fetchAttributesFile, readContentJsonAsAttributes, setOf("success"))
+    val connectionFromReadContentJsonAsAttributesToReadContentJsonAsAttributes =
+        createConnection(readContentJsonAsAttributes, readContentJsonAsAttributes, setOf("failure"))
+    val connectionFromReadContentJsonAsAttributesToFetchContentFile =
+        createConnection(readContentJsonAsAttributes, fetchContentFile, setOf("success"))
+    val connectionFromFetchContentFileToFetchContentFile =
+        createConnection(fetchContentFile, fetchContentFile, setOf("not.found", "permission.denied", "failure"))
+    val connectionFromFetchContentFileToComputeHash =
+        createConnection(fetchContentFile, computeHash, setOf("success"))
+    val connectionFromComputeHashToTransferFlowFile =
+        createConnection(computeHash, transferFlowFile, setOf("success"))
+    val connectionFromTransferFlowFileToTransferFlowFile =
+        createConnection(transferFlowFile, transferFlowFile, setOf("failure"))
+    val connectionFromReceiveFlowFileToAdjustFilenameForContentFile =
+        createConnection(receiveFlowFile, adjustFilenameForContentFile, setOf("success"))
+    val connectionFromAdjustFilenameForContentFileToStoreContent =
+        createConnection(adjustFilenameForContentFile, storeContent, setOf("success"))
+    val connectionFromStoreContentToStoreContent = createConnection(storeContent, storeContent, setOf("failure"))
+    val connectionFromStoreContentToWriteAttributesAsJsonInContent =
+        createConnection(storeContent, writeAttributesAsJsonInContent, setOf("success"))
+    val connectionFromWriteAttributesAsJsonInContentToWriteAttributesAsJsonInContent =
+        createConnection(writeAttributesAsJsonInContent, writeAttributesAsJsonInContent, setOf("failure"))
+    val connectionFromWriteAttributesAsJsonInContentToAdjustFilenameForAttributesFile =
+        createConnection(writeAttributesAsJsonInContent, adjustFilenameForAttributesFile, setOf("success"))
+    val connectionFromAdjustFilenameForAttributesFileToStoreAttributes =
+        createConnection(adjustFilenameForAttributesFile, storeAttributes, setOf("success"))
+    val connectionFromStoreAttributesToStoreAttributes =
+        createConnection(storeAttributes, storeAttributes, setOf("failure"))
+
+    TestFlowConnections(
+        listFilesToFetchAttributesFile = connectionFromListFilesToFetchAttributesFile,
+        fetchAttributesFileToFetchAttributesFile = connectionFromFetchAttributesFileToFetchAttributesFile,
+        fetchAttributesFileToReadContentJsonAsAttributes = connectionFromFetchAttributesFileToReadContentJsonAsAttributes,
+        readContentJsonAsAttributesToReadContentJsonAsAttributes = connectionFromReadContentJsonAsAttributesToReadContentJsonAsAttributes,
+        readContentJsonAsAttributesToFetchContentFile = connectionFromReadContentJsonAsAttributesToFetchContentFile,
+        fetchContentFileToFetchContentFile = connectionFromFetchContentFileToFetchContentFile,
+        fetchContentFileToComputeHash = connectionFromFetchContentFileToComputeHash,
+        computeHashToTransferFlowFile = connectionFromComputeHashToTransferFlowFile,
+        transferFlowFileToTransferFlowFile = connectionFromTransferFlowFileToTransferFlowFile,
+        receiveFlowFileToAdjustFilenameForContentFile = connectionFromReceiveFlowFileToAdjustFilenameForContentFile,
+        adjustFilenameForContentFileToStoreContent = connectionFromAdjustFilenameForContentFileToStoreContent,
+        storeContentToStoreContent = connectionFromStoreContentToStoreContent,
+        storeContentToWriteAttributesAsJsonInContent = connectionFromStoreContentToWriteAttributesAsJsonInContent,
+        writeAttributesAsJsonInContentToWriteAttributesAsJsonInContent = connectionFromWriteAttributesAsJsonInContentToWriteAttributesAsJsonInContent,
+        writeAttributesAsJsonInContentToAdjustFilenameForAttributesFile = connectionFromWriteAttributesAsJsonInContentToAdjustFilenameForAttributesFile,
+        adjustFilenameForAttributesFileToStoreAttributes = connectionFromAdjustFilenameForAttributesFileToStoreAttributes,
+        storeAttributesToStoreAttributes = connectionFromStoreAttributesToStoreAttributes,
     )
 }

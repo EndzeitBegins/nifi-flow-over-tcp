@@ -36,7 +36,9 @@ interface NiFiApiGateway {
     fun updateConnectionBackPressure(
         id: String,
         backPressureDataSizeThreshold: String? = null,
-        backPressureObjectThreshold: String? = null,
-    ): Connection
+        backPressureObjectThreshold: Int? = null,
+    )
+
+    fun countFlowFilesInQueueOfConnection(id: String): Int
 }
 

@@ -63,6 +63,8 @@ object NiFiContainerProvider {
             .withFileSystemBind(narPathOnHost, narPathInContainer, BindMode.READ_ONLY)
             .waitingFor(HttpWaitStrategy().forPath("/nifi"))
 
+            .withReuse(true) // TODO #15 remove!!!
+
         println(
             """
             ############################################################
