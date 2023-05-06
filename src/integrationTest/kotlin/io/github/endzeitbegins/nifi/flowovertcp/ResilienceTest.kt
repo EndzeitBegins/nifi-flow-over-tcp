@@ -54,8 +54,10 @@ class ResilienceTest {
     fun `supports backpressure from downstream`(): Unit =
         niFiApiGateway.withTestFlow(startProcessGroup = false) { niFiTestFlow ->
             val objectThreshold = 42
-            val connectionBeforePutFlowFileToTCP =
-                niFiTestFlow.connections.receiveFlowFileToAdjustFilenameForContentFile
+            val defaultConnectionBeforePutFlowFileToTCP =
+                niFiTestFlow.connections.computeHashToTransferFlowFile
+            val errorConnectionBeforePutFlowFileToTCP =
+                niFiTestFlow.connections.transferFlowFileToTransferFlowFile
             val connectionAfterListenFlowFromTCP =
                 niFiTestFlow.connections.receiveFlowFileToAdjustFilenameForContentFile
             updateConnectionBackPressure(
@@ -77,9 +79,13 @@ class ResilienceTest {
             }
 
             val additionalTestSet = generateTestSeed(random = random, flowFileCount = 58).provideToNiFiFlow(random)
+            Thread.sleep(1_000) // ensure NiFi had time to pick FlowFiles up and try to transfer them
             expectWithRetry(retries = 360, waitTime = Duration.ofMillis(250)) {
-                that(countFlowFilesInQueueOfConnection(id = connectionBeforePutFlowFileToTCP.id))
-                    .describedAs("Count of FlowFiles in queue of connection before PutFlowFileToTCP")
+                that(
+                    countFlowFilesInQueueOfConnection(id = defaultConnectionBeforePutFlowFileToTCP.id) +
+                            countFlowFilesInQueueOfConnection(id = errorConnectionBeforePutFlowFileToTCP.id)
+                )
+                    .describedAs("Count of FlowFiles in queues of connections before PutFlowFileToTCP")
                     .isEqualTo(additionalTestSet.size)
                 that(countFlowFilesInQueueOfConnection(id = connectionAfterListenFlowFromTCP.id))
                     .describedAs("Count of FlowFiles in queue of connection after ListenFlowFromTCP")
