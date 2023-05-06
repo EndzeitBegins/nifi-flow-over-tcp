@@ -21,7 +21,8 @@ class KtorNiFiApiGateway(private val niFiApiUrl: String) : NiFiApiGateway {
     )
 
     private val client = HttpClient(CIO) {
-        install(Logging)
+        // uncomment to log requests / responses
+        // install(Logging)
 
         install(ContentNegotiation) {
             json(Json {
