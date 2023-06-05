@@ -7,7 +7,7 @@ ktor = "2.3.1"
 nifi = "1.21.0"
 slf4j = "2.0.7"
 strikt = "0.34.1"
-testcontainers = "1.18.1"
+testcontainers = "1.18.3"
 
 [libraries]
 nifi-api = { module = "org.apache.nifi:nifi-api", version.ref = "nifi" }
