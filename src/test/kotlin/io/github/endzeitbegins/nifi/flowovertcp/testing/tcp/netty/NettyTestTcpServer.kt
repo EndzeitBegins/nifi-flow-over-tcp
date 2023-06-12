@@ -38,9 +38,12 @@ class NettyTestTcpServer : TestTcpServer {
 
     private lateinit var eventServer: EventServer
 
-    override fun start(port: Int) {
+    override val listeningPort: Int
+        get() = eventServer.listeningPort
+
+    override fun start(port: Int?) {
         val listenAddress: InetAddress = InetAddress.getByName("0.0.0.0")
-        val serverFactory = NettyEventServerFactory(listenAddress, port, TransportProtocol.TCP).apply {
+        val serverFactory = NettyEventServerFactory(listenAddress, port ?: 0, TransportProtocol.TCP).apply {
             setHandlerSupplier {
                 listOf<ChannelHandler>(
                     ByteArrayDecoder(),

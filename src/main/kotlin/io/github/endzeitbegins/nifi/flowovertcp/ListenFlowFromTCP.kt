@@ -197,4 +197,9 @@ public class ListenFlowFromTCP : AbstractSessionFactoryProcessor() {
 
         sessionFactoryReference.set(null)
     }
+
+    internal val listeningPort: Int
+        get() = checkNotNull(eventServer) {
+            "Cannot retrieve listeningPort because eventServer has NOT been initialized!"
+        }.listeningPort
 }
