@@ -28,6 +28,7 @@ as outlined in the [NiFi System Administrator’s Guide](https://nifi.apache.org
 
 | nifi-flow-over-tcp                    | Apache NiFi |
 | ------------------------------------- | ----------- |
+| 0.0.9       | 1.22.0 |
 | 0.0.8                                 | 1.21.0      |
 | 0.0.7                                 | 1.20.0      |
 | 0.0.6 <br> 0.0.5                      | 1.19.1      |
