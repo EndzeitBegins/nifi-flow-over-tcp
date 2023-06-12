@@ -20,7 +20,13 @@ import kotlin.random.Random
 
 class PutFlowToTCPTest {
 
-    private val port = NetworkUtils.availablePort()
+    private val tcpServer = testTcpServer()
+
+    init {
+        tcpServer.start()
+    }
+
+    private val port = tcpServer.listeningPort
 
     private val testRunner = newTestRunner<PutFlowToTCP> {
         threadCount = 1
@@ -29,13 +35,6 @@ class PutFlowToTCPTest {
         setProperty(INCLUDE_CORE_ATTRIBUTES, "false")
         setProperty(PORT, "$port")
         setProperty(CONNECTION_PER_FLOWFILE, "true")
-    }
-
-    private val tcpServer = testTcpServer()
-
-    @BeforeEach
-    fun startTcpServer() {
-        tcpServer.start(port)
     }
 
     @AfterEach

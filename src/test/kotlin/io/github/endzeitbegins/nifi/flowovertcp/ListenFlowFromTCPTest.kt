@@ -5,7 +5,6 @@ import io.github.endzeitbegins.nifi.flowovertcp.testing.flowfile.TestFlowFile
 import io.github.endzeitbegins.nifi.flowovertcp.testing.flowfile.toByteRepresentation
 import io.github.endzeitbegins.nifi.flowovertcp.testing.flowfile.withoutCoreAttributes
 import io.github.endzeitbegins.nifi.flowovertcp.testing.tcp.testTcpClient
-import io.github.endzeitbegins.nifi.flowovertcp.testing.testrunner.newTestRunner
 import io.github.endzeitbegins.nifi.flowovertcp.testing.utils.strikt.attributes
 import io.github.endzeitbegins.nifi.flowovertcp.testing.utils.strikt.receivedFlowFile
 import io.github.endzeitbegins.nifi.flowovertcp.testing.utils.strikt.receivedFlowFiles
@@ -15,7 +14,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import org.apache.nifi.processor.util.listen.AbstractListenEventProcessor.REL_SUCCESS
 import org.apache.nifi.processor.util.listen.ListenerProperties
-import org.apache.nifi.remote.io.socket.NetworkUtils
+import org.apache.nifi.util.TestRunners
 import org.junit.jupiter.api.Test
 import strikt.api.expectThat
 import strikt.assertions.containsExactlyInAnyOrder
@@ -28,13 +27,22 @@ import kotlin.random.Random
 class ListenFlowFromTCPTest {
 
     private val hostname = "127.0.0.1"
-    private val port = NetworkUtils.availablePort()
 
-    private val testRunner = newTestRunner<ListenFlowFromTCP> {
-        setProperty(ListenerProperties.PORT, "$port")
+    private val processor = ListenFlowFromTCP()
+    private val testRunner = TestRunners.newTestRunner(processor)
+
+    init {
+        // let the internal TCP server choose a free port by itself
+        testRunner.setProperty(ListenerProperties.PORT, "0")
     }
 
-    private val tcpClient = testTcpClient(hostname, port)
+    private val port by lazy {
+        processor.listeningPort
+    }
+
+    private val tcpClient by lazy {
+        testTcpClient(hostname, port)
+    }
 
     @Test
     fun `supports transfer of FlowFiles with no attributes and empty content`() {

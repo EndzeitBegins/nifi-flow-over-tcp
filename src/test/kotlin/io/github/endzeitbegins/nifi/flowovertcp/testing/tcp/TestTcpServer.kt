@@ -4,7 +4,10 @@ import io.github.endzeitbegins.nifi.flowovertcp.testing.tcp.netty.NettyTestTcpSe
 
 internal interface TestTcpServer {
     val receivedBytes: Map<String, ByteArray>
-    fun start(port: Int)
+    val listeningPort: Int
+
+    fun start(port: Int? = null)
+
     fun shutdown()
 }
 
