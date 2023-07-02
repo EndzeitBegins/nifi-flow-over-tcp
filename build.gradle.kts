@@ -23,9 +23,7 @@ val artifactName = "nifi-flow-over-tcp"
 
 java {
     toolchain {
-        languageVersion.set(
-            libs.versions.java.map { version -> JavaLanguageVersion.of(version) }
-        )
+        languageVersion = libs.versions.java.map { version -> JavaLanguageVersion.of(version) }
     }
 }
 
@@ -62,14 +60,14 @@ testing {
             }
         }
 
-        val integrationTest by registering(JvmTestSuite::class) {
+        register("integrationTest", JvmTestSuite::class) {
             useJUnitJupiter()
 
-            testType.set(TestSuiteType.INTEGRATION_TEST)
+            testType = TestSuiteType.INTEGRATION_TEST
 
             sources {
                 resources {
-                    this.srcDirs
+                    srcDirs
                 }
             }
 
@@ -112,29 +110,29 @@ publishing {
         artifact(tasks.nar)
 
         pom {
-            name.set(artifactName)
-            description.set("A Apache NiFi Archive (.nar) with Processor implementations for transmitting FlowFiles over bare TCP.")
-            url.set("https://github.com/EndzeitBegins/nifi-flow-over-tcp")
+            name = artifactName
+            description = "A Apache NiFi Archive (.nar) with Processor implementations for transmitting FlowFiles over bare TCP."
+            url = "https://github.com/EndzeitBegins/nifi-flow-over-tcp"
 
             licenses {
                 license {
-                    name.set("The Apache License, Version 2.0")
-                    url.set("https://www.apache.org/licenses/LICENSE-2.0.txt")
+                    name = "The Apache License, Version 2.0"
+                    url = "https://www.apache.org/licenses/LICENSE-2.0.txt"
                 }
             }
 
             developers {
                 developer {
-                    id.set("endzeitbegins")
-                    name.set("EndzeitBegins")
-                    email.set("io.github.endzeitbegins@gmail.com")
+                    id = "endzeitbegins"
+                    name = "EndzeitBegins"
+                    email = "io.github.endzeitbegins@gmail.com"
                 }
             }
 
             scm {
-                connection.set("scm:git:git://github.com/EndzeitBegins/nifi-flow-over-tcp.git")
-                developerConnection.set("scm:git:ssh://github.com/EndzeitBegins/nifi-flow-over-tcp.git")
-                url.set("https://github.com/EndzeitBegins/nifi-flow-over-tcp")
+                connection = "scm:git:git://github.com/EndzeitBegins/nifi-flow-over-tcp.git"
+                developerConnection = "scm:git:ssh://github.com/EndzeitBegins/nifi-flow-over-tcp.git"
+                url = "https://github.com/EndzeitBegins/nifi-flow-over-tcp"
             }
         }
     }
@@ -143,8 +141,8 @@ publishing {
 nexusPublishing {
     this.repositories {
         sonatype {
-            nexusUrl.set(uri("https://s01.oss.sonatype.org/service/local/"))
-            snapshotRepositoryUrl.set(uri("https://s01.oss.sonatype.org/content/repositories/snapshots/"))
+            nexusUrl = uri("https://s01.oss.sonatype.org/service/local/")
+            snapshotRepositoryUrl = uri("https://s01.oss.sonatype.org/content/repositories/snapshots/")
         }
     }
 }
