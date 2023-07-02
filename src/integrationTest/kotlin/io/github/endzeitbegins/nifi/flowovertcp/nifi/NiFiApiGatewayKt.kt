@@ -21,9 +21,9 @@ internal fun NiFiApiGateway.createConnection(
 
 private var socketPort = 31337
 
-internal fun <R> NiFiApiGateway.withTestFlow(block: (testFlow: NiFiTestFlow) -> R): R {
-    val testFlow = setUpNiFiTestFlow(socketPort)
+internal fun <R> NiFiApiGateway.withTestFlow(startProcessGroup: Boolean = true, block: NiFiApiGateway.(testFlow: NiFiTestFlow) -> R): R {
+    val testFlow = setUpNiFiTestFlow(socketPort = socketPort, startProcessGroup = startProcessGroup)
     socketPort += 1
 
-    return block.invoke(testFlow)
+    return block.invoke(this, testFlow)
 }

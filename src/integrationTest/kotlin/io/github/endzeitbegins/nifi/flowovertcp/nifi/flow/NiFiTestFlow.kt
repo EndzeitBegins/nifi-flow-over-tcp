@@ -1,14 +1,16 @@
 package io.github.endzeitbegins.nifi.flowovertcp.nifi.flow
 
+import io.github.endzeitbegins.nifi.flowovertcp.nifi.flow.models.Connection
 import io.github.endzeitbegins.nifi.flowovertcp.nifi.flow.models.ProcessGroup
 import io.github.endzeitbegins.nifi.flowovertcp.nifi.flow.models.Processor
 
 internal data class NiFiTestFlow(
     val rootProcessGroup: ProcessGroup,
-    val processors: TestProcessors,
+    val processors: TestFlowProcessors,
+    val connections: TestFlowConnections,
 )
 
-internal data class TestProcessors(
+internal data class TestFlowProcessors(
     val listFiles: Processor,
     val fetchAttributesFile: Processor,
     val readContentJsonAsAttributes: Processor,
@@ -21,4 +23,24 @@ internal data class TestProcessors(
     val writeAttributesAsJsonInContent: Processor,
     val adjustFilenameForAttributesFile: Processor,
     val storeAttributes: Processor,
+)
+
+internal data class TestFlowConnections(
+    val listFilesToFetchAttributesFile: Connection,
+    val fetchAttributesFileToFetchAttributesFile: Connection,
+    val fetchAttributesFileToReadContentJsonAsAttributes: Connection,
+    val readContentJsonAsAttributesToReadContentJsonAsAttributes: Connection,
+    val readContentJsonAsAttributesToFetchContentFile: Connection,
+    val fetchContentFileToFetchContentFile: Connection,
+    val fetchContentFileToComputeHash: Connection,
+    val computeHashToTransferFlowFile: Connection,
+    val transferFlowFileToTransferFlowFile: Connection,
+    val receiveFlowFileToAdjustFilenameForContentFile: Connection,
+    val adjustFilenameForContentFileToStoreContent: Connection,
+    val storeContentToStoreContent: Connection,
+    val storeContentToWriteAttributesAsJsonInContent: Connection,
+    val writeAttributesAsJsonInContentToWriteAttributesAsJsonInContent: Connection,
+    val writeAttributesAsJsonInContentToAdjustFilenameForAttributesFile: Connection,
+    val adjustFilenameForAttributesFileToStoreAttributes: Connection,
+    val storeAttributesToStoreAttributes: Connection,
 )

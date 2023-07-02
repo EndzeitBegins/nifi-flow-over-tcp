@@ -6,6 +6,7 @@ import io.github.endzeitbegins.nifi.flowovertcp.nifi.withTestFlow
 import io.github.endzeitbegins.nifi.flowovertcp.testcontainers.NiFiContainerProvider
 import io.github.endzeitbegins.nifi.flowovertcp.testing.FlowFileSeed
 import io.github.endzeitbegins.nifi.flowovertcp.testing.assertions.`expect that FlowFiles were transferred`
+import io.github.endzeitbegins.nifi.flowovertcp.testing.expectWithRetry
 import io.github.endzeitbegins.nifi.flowovertcp.testing.provideToNiFiFlow
 import io.github.endzeitbegins.nifi.flowovertcp.utils.clearMountedFileSystem
 import io.github.endzeitbegins.nifi.flowovertcp.utils.destinationDirectory
@@ -13,6 +14,8 @@ import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import strikt.api.expectThat
 import strikt.assertions.isEmpty
+import strikt.assertions.isEqualTo
+import java.time.Duration
 import kotlin.io.path.listDirectoryEntries
 import kotlin.random.Random
 
@@ -33,7 +36,7 @@ class ResilienceTest {
     fun `does NOT lose any information, when target host is temporarily unavailable`() =
         niFiApiGateway.withTestFlow { niFiTestFlow ->
             val listenFlowFromTcpProcessor = niFiTestFlow.processors.receiveFlowFile
-            niFiApiGateway.stopProcessor(listenFlowFromTcpProcessor.id)
+            stopProcessor(listenFlowFromTcpProcessor.id)
 
             val random = Random(4711)
             val testSetSeed = generateTestSeed(random = random, flowFileCount = 1_000)
@@ -43,21 +46,75 @@ class ResilienceTest {
             Thread.sleep(5_000)
             expectThat(NiFiContainerProvider.destinationDirectory.listDirectoryEntries("*.attributes")).isEmpty()
 
-            niFiApiGateway.startProcessor(listenFlowFromTcpProcessor.id)
+            startProcessor(listenFlowFromTcpProcessor.id)
             `expect that FlowFiles were transferred`(testSet)
         }
 
-    private fun generateTestSeed(random: Random, flowFileCount: Int) = List(flowFileCount) { index ->
-        val fileName = "generated-$index"
-        val fileSize = random.nextInt(1_024, 64 * 1_024)
-
-        FlowFileSeed(
-            fileNamePrefix = fileName,
-            fileSize = fileSize,
-            attributes = mapOf(
-                "index" to "$index",
-                "custom.filename" to fileName
+    @Test
+    fun `supports backpressure from downstream`(): Unit =
+        niFiApiGateway.withTestFlow(startProcessGroup = false) { niFiTestFlow ->
+            val objectThreshold = 42
+            val defaultConnectionBeforePutFlowFileToTCP =
+                niFiTestFlow.connections.computeHashToTransferFlowFile
+            val errorConnectionBeforePutFlowFileToTCP =
+                niFiTestFlow.connections.transferFlowFileToTransferFlowFile
+            val connectionAfterListenFlowFromTCP =
+                niFiTestFlow.connections.receiveFlowFileToAdjustFilenameForContentFile
+            updateConnectionBackPressure(
+                id = connectionAfterListenFlowFromTCP.id,
+                backPressureDataSizeThreshold = null,
+                backPressureObjectThreshold = objectThreshold
             )
-        )
+            startProcessGroup(niFiTestFlow.rootProcessGroup.id)
+            val adjustFilenameForContentFileProcessor = niFiTestFlow.processors.adjustFilenameForContentFile
+            stopProcessor(adjustFilenameForContentFileProcessor.id)
+
+            val random = Random(2573)
+            val initialTestSet =
+                generateTestSeed(random = random, flowFileCount = objectThreshold).provideToNiFiFlow(random)
+            expectWithRetry(retries = 360, waitTime = Duration.ofMillis(250)) {
+                that(countFlowFilesInQueueOfConnection(id = connectionAfterListenFlowFromTCP.id))
+                    .describedAs("Count of FlowFiles in queue of connection after ListenFlowFromTCP")
+                    .isEqualTo(initialTestSet.size)
+            }
+
+            val additionalTestSet = generateTestSeed(random = random, flowFileCount = 58).provideToNiFiFlow(random)
+            Thread.sleep(1_000) // ensure NiFi had time to pick FlowFiles up and try to transfer them
+            expectWithRetry(retries = 360, waitTime = Duration.ofMillis(250)) {
+                that(
+                    countFlowFilesInQueueOfConnection(id = defaultConnectionBeforePutFlowFileToTCP.id) +
+                            countFlowFilesInQueueOfConnection(id = errorConnectionBeforePutFlowFileToTCP.id)
+                )
+                    .describedAs("Count of FlowFiles in queues of connections before PutFlowFileToTCP")
+                    .isEqualTo(additionalTestSet.size)
+                that(countFlowFilesInQueueOfConnection(id = connectionAfterListenFlowFromTCP.id))
+                    .describedAs("Count of FlowFiles in queue of connection after ListenFlowFromTCP")
+                    .isEqualTo(initialTestSet.size)
+            }
+
+            startProcessor(adjustFilenameForContentFileProcessor.id)
+            `expect that FlowFiles were transferred`(initialTestSet + additionalTestSet)
+        }
+
+    private var baseIndex = 0
+    private fun generateTestSeed(random: Random, flowFileCount: Int): List<FlowFileSeed> {
+        val testSeed = List(flowFileCount) { iterationIndex ->
+            val index = baseIndex + iterationIndex
+            val fileName = "generated-$index"
+            val fileSize = random.nextInt(1_024, 64 * 1_024)
+
+            FlowFileSeed(
+                fileNamePrefix = fileName,
+                fileSize = fileSize,
+                attributes = mapOf(
+                    "index" to "$index",
+                    "custom.filename" to fileName
+                )
+            )
+        }
+
+        baseIndex += flowFileCount
+
+        return testSeed
     }
 }

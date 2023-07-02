@@ -16,7 +16,8 @@ internal fun `expect that FlowFiles were transferred`(testSet: List<FileSystemBa
         val attributeFiles = NiFiContainerProvider.destinationDirectory
             .listDirectoryEntries("*.attributes")
 
-        that(attributeFiles).hasSize(testSet.size)
+        that(attributeFiles).describedAs("Files with attributes of FlowFiles transferred")
+            .hasSize(testSet.size)
     }
 
     expect {

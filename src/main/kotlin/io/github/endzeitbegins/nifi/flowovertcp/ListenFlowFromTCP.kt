@@ -2,11 +2,10 @@ package io.github.endzeitbegins.nifi.flowovertcp
 
 import io.github.endzeitbegins.nifi.flowovertcp.internal.codec.receive.ReceivableFlowFileServerFactory
 import io.github.endzeitbegins.nifi.flowovertcp.internal.listen.*
-import io.github.endzeitbegins.nifi.flowovertcp.internal.listen.bufferAllocator
-import io.github.endzeitbegins.nifi.flowovertcp.internal.listen.idleTimeout
-import io.github.endzeitbegins.nifi.flowovertcp.internal.listen.socketBufferSize
-import io.github.endzeitbegins.nifi.flowovertcp.internal.listen.workerThreads
+import io.github.endzeitbegins.nifi.flowovertcp.internal.utils.areAllRelationshipsAvailable
+import io.github.endzeitbegins.nifi.flowovertcp.internal.utils.monitorRelationshipsForAvailability
 import org.apache.nifi.annotation.behavior.InputRequirement
+import org.apache.nifi.annotation.behavior.TriggerSerially
 import org.apache.nifi.annotation.behavior.WritesAttribute
 import org.apache.nifi.annotation.behavior.WritesAttributes
 import org.apache.nifi.annotation.documentation.CapabilityDescription
@@ -20,10 +19,7 @@ import org.apache.nifi.event.transport.EventServer
 import org.apache.nifi.event.transport.configuration.TransportProtocol
 import org.apache.nifi.event.transport.netty.NettyEventServerFactory
 import org.apache.nifi.expression.ExpressionLanguageScope
-import org.apache.nifi.processor.AbstractSessionFactoryProcessor
-import org.apache.nifi.processor.ProcessContext
-import org.apache.nifi.processor.ProcessSessionFactory
-import org.apache.nifi.processor.Relationship
+import org.apache.nifi.processor.*
 import org.apache.nifi.processor.util.StandardValidators
 import org.apache.nifi.processor.util.listen.AbstractListenEventProcessor
 import org.apache.nifi.processor.util.listen.ListenerProperties
@@ -41,6 +37,7 @@ private const val addNetworkInformationAttributesName = "Add IP and port informa
         These attributes and the content is written to a new FlowFile."""
 )
 @InputRequirement(InputRequirement.Requirement.INPUT_FORBIDDEN)
+@TriggerSerially
 @WritesAttributes(
     WritesAttribute(
         attribute = "tcp.sender",
@@ -117,11 +114,6 @@ public class ListenFlowFromTCP : AbstractSessionFactoryProcessor() {
         ListenerProperties.NETWORK_INTF_NAME,
         ListenerProperties.PORT,
         ADD_NETWORK_INFORMATION_ATTRIBUTES,
-
-        // TODO Use event passing
-        //  - could be a solution to https://github.com/EndzeitBegins/nifi-flow-over-tcp/issues/15 as well
-        //  ListenerProperties.MAX_MESSAGE_QUEUE_SIZE,
-
         ListenerProperties.MAX_SOCKET_BUFFER_SIZE,
         ListenerProperties.WORKER_THREADS,
         IDLE_CONNECTION_TIMEOUT,
@@ -136,18 +128,43 @@ public class ListenFlowFromTCP : AbstractSessionFactoryProcessor() {
 
     @Volatile
     private var eventServer: EventServer? = null
-    private val sessionFactoryReference: AtomicReference<ProcessSessionFactory> = AtomicReference()
+
+    @Volatile
+    private var relationshipMonitorThread: Thread? = null
+    private val sessionFactoryReference: AtomicReference<ProcessSessionFactory?> = AtomicReference()
 
     @OnScheduled
     public fun onScheduled(context: ProcessContext) {
+        if (areAllRelationshipsAvailable(context)) {
+            startEventServer(context)
+        }
+
+        relationshipMonitorThread = monitorRelationshipsForAvailability(processContext = context, logger = logger) {
+            stopEventServerIfRunning()
+        }
+    }
+
+    override fun onTrigger(context: ProcessContext, sessionFactory: ProcessSessionFactory) {
+        if (eventServer == null) {
+            startEventServer(context)
+        }
+
+        sessionFactoryReference.set(sessionFactory)
+
+        context.yield()
+    }
+
+    @OnStopped
+    public fun stopped() {
+        relationshipMonitorThread?.interrupt()
+        stopEventServerIfRunning()
+
+        sessionFactoryReference.set(null)
+    }
+
+    private fun startEventServer(context: ProcessContext) {
         val address = context.address
         val port = context.port
-
-        // TODO Use event passing
-        //  - could be a solution to https://github.com/EndzeitBegins/nifi-flow-over-tcp/issues/15 as well
-//        val eventsCapacity = context.getProperty(ListenerProperties.MAX_MESSAGE_QUEUE_SIZE).asInteger()
-//        events = TrackingLinkedBlockingQueue(eventsCapacity)
-//        errorEvents = LinkedBlockingQueue()
 
         val eventFactory: NettyEventServerFactory = ReceivableFlowFileServerFactory(
             address = address,
@@ -174,28 +191,21 @@ public class ListenFlowFromTCP : AbstractSessionFactoryProcessor() {
         eventFactory.setThreadNamePrefix(String.format("%s[%s]", javaClass.simpleName, identifier))
 
         try {
+            logger.debug("The eventServer is being started")
+
             eventServer = eventFactory.eventServer
         } catch (e: EventException) {
             logger.error("Failed to bind to [{}:{}]", address, port, e)
         }
     }
 
+    private fun stopEventServerIfRunning() {
+        eventServer?.also { runningEventServer ->
+            logger.debug("The eventServer is being shutdown")
 
-    override fun onTrigger(context: ProcessContext, sessionFactory: ProcessSessionFactory) {
-        // TODO Use event passing
-        //  - could be a solution to https://github.com/EndzeitBegins/nifi-flow-over-tcp/issues/15 as well
-
-        sessionFactoryReference.set(sessionFactory)
-
-        context.yield()
-    }
-
-    @OnStopped
-    public fun stopped() {
-        eventServer?.shutdown()
-        eventServer = null
-
-        sessionFactoryReference.set(null)
+            runningEventServer.shutdown()
+            eventServer = null
+        }
     }
 
     internal val listeningPort: Int

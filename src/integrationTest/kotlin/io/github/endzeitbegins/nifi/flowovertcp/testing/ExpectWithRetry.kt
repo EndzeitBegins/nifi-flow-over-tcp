@@ -18,7 +18,10 @@ internal fun expectWithRetry(
             break
         } catch (assertionError: AssertionError) {
             remainingAttempts -= 1
-            Thread.sleep(waitTime.toMillis())
+
+            if (remainingAttempts > 0) {
+                Thread.sleep(waitTime.toMillis())
+            } else throw assertionError
         }
     }
 }

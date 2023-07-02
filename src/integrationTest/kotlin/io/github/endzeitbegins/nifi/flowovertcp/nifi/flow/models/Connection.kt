@@ -1,3 +1,5 @@
 package io.github.endzeitbegins.nifi.flowovertcp.nifi.flow.models
 
-object Connection
+data class Connection(
+    val id: String,
+)

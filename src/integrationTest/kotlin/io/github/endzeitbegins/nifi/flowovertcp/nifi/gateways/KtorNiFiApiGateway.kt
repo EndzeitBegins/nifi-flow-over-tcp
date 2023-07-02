@@ -16,12 +16,13 @@ import kotlinx.serialization.json.Json
 
 class KtorNiFiApiGateway(private val niFiApiUrl: String) : NiFiApiGateway {
 
-    constructor(port: Int): this(
+    constructor(port: Int) : this(
         niFiApiUrl = "http://localhost:$port/nifi-api"
     )
 
     private val client = HttpClient(CIO) {
-        install(Logging)
+        // uncomment to log requests / responses
+        // install(Logging)
 
         install(ContentNegotiation) {
             json(Json {
@@ -30,6 +31,8 @@ class KtorNiFiApiGateway(private val niFiApiUrl: String) : NiFiApiGateway {
                 ignoreUnknownKeys = true
             })
         }
+
+        expectSuccess = true
     }
 
     override fun createProcessGroup(
@@ -81,7 +84,7 @@ class KtorNiFiApiGateway(private val niFiApiUrl: String) : NiFiApiGateway {
         position: Position,
         autoTerminatedRelationships: Set<String>,
     ): Processor {
-        val body = ProcessorEntity(
+        val requestBody = ProcessorEntity(
             id = null,
             component = ProcessorDTO(
                 name = name,
@@ -104,7 +107,7 @@ class KtorNiFiApiGateway(private val niFiApiUrl: String) : NiFiApiGateway {
         val createdProcessorEntity = runBlocking {
             val response = client.post("$niFiApiUrl/process-groups/$parentProcessGroupId/processors") {
                 contentType(ContentType.Application.Json)
-                setBody(body)
+                setBody(requestBody)
             }
 
             response.body<ProcessorEntity>()
@@ -121,7 +124,7 @@ class KtorNiFiApiGateway(private val niFiApiUrl: String) : NiFiApiGateway {
     }
 
     override fun stopProcessor(id: String) {
-       changeProcessorRunStatus(id, "STOPPED")
+        changeProcessorRunStatus(id, "STOPPED")
     }
 
     override fun createConnection(
@@ -129,47 +132,87 @@ class KtorNiFiApiGateway(private val niFiApiUrl: String) : NiFiApiGateway {
         source: ConnectionSource,
         destination: ConnectionDestination,
     ): Connection {
-        runBlocking {
-            client.post("$niFiApiUrl/process-groups/$parentProcessGroupId/connections") {
+        val requestBody = ConnectionEntity(
+            revision = RevisionDTO(
+                clientId = "meh",
+                version = 0,
+            ),
+            component = ConnectionDTO(
+                id = null,
+
+                source = ConnectableDTO(
+                    groupId = source.parentProcessGroupId,
+                    id = source.sourceId,
+                    type = "PROCESSOR",
+                ),
+                destination = ConnectableDTO(
+                    groupId = destination.parentProcessGroupId,
+                    id = destination.destinationId,
+                    type = "PROCESSOR",
+                ),
+                selectedRelationships = (source as? ConnectionSource.Processor)?.relationships ?: emptySet(),
+
+                backPressureDataSizeThreshold = null,
+                backPressureObjectThreshold = null
+            ),
+            status = null,
+        )
+
+        val createdConnectionEntity = runBlocking {
+            val response = client.post("$niFiApiUrl/process-groups/$parentProcessGroupId/connections") {
                 contentType(ContentType.Application.Json)
-                setBody(
-                    ConnectionEntity(
-                        component = ConnectionDTO(
-                            backPressureDataSizeThreshold = null,
-                            backPressureObjectThreshold = null,
-
-                            source = ConnectableDTO(
-                                groupId = source.parentProcessGroupId,
-                                id = source.sourceId,
-                                type = "PROCESSOR",
-                            ),
-
-                            destination = ConnectableDTO(
-                                groupId = destination.parentProcessGroupId,
-                                id = destination.destinationId,
-                                type = "PROCESSOR",
-                            ),
-
-                            selectedRelationships = (source as? ConnectionSource.Processor)?.relationships ?: emptySet()
-                        ),
-                        revision = RevisionDTO(
-                            clientId = "meh",
-                            version = 0,
-                        ),
-                    )
-                )
+                setBody(requestBody)
             }
+
+            response.body<ConnectionEntity>()
         }
 
-        return Connection
+        return Connection(
+            id = checkNotNull(createdConnectionEntity.component.id)
+        )
     }
 
     override fun updateConnectionBackPressure(
         id: String,
         backPressureDataSizeThreshold: String?,
-        backPressureObjectThreshold: String?,
-    ): Connection {
-        TODO("Implement and use as part of #15")
+        backPressureObjectThreshold: Int?,
+    ): Unit = runBlocking {
+        val connectionEntity = fetchConnection(id)
+
+        client.put("$niFiApiUrl/connections/$id") {
+            contentType(ContentType.Application.Json)
+            setBody(
+                ConnectionEntity(
+                    revision = connectionEntity.revision,
+                    component = ConnectionDTO(
+                        id = connectionEntity.component.id,
+
+                        // source and destination cannot be changed after creation, thus must not be set on update
+                        source = null,
+                        destination = null,
+                        selectedRelationships = null,
+
+                        backPressureDataSizeThreshold = backPressureDataSizeThreshold,
+                        backPressureObjectThreshold = backPressureObjectThreshold?.toString(),
+                    ),
+                    status = null,
+                )
+            )
+        }
+    }
+
+    private suspend fun fetchConnection(id: String) =
+        client
+            .get("$niFiApiUrl/connections/$id")
+            .body<ConnectionEntity>()
+
+    override fun countFlowFilesInQueueOfConnection(id: String): Int = runBlocking {
+        val connectionEntity = fetchConnection(id)
+        val status = checkNotNull(connectionEntity.status) {
+            "Cannot determine queued flowFiles because status is NOT available on ConnectionEntity!"
+        }
+
+        status.aggregateSnapshot.flowFilesQueued
     }
 
     private fun changeProcessGroupRunStatus(id: String, status: String) {
@@ -259,15 +302,19 @@ private data class ProcessorConfigDTO(
 private data class ConnectionEntity(
     val revision: RevisionDTO,
     val component: ConnectionDTO,
+    val status: ConnectionStatusDTO?,
 )
 
 @Serializable
 private data class ConnectionDTO(
+    val id: String?,
+
+    val source: ConnectableDTO?,
+    val destination: ConnectableDTO?,
+    val selectedRelationships: Set<String>?,
+
     val backPressureDataSizeThreshold: String?,
     val backPressureObjectThreshold: String?,
-    val source: ConnectableDTO,
-    val destination: ConnectableDTO,
-    val selectedRelationships: Set<String>,
 )
 
 @Serializable
@@ -275,6 +322,16 @@ private data class ConnectableDTO(
     val groupId: String,
     val id: String,
     val type: String,
+)
+
+@Serializable
+private data class ConnectionStatusDTO(
+    val aggregateSnapshot: ConnectionStatusSnapshotDTO,
+)
+
+@Serializable
+private data class ConnectionStatusSnapshotDTO(
+    val flowFilesQueued: Int,
 )
 
 @Serializable
