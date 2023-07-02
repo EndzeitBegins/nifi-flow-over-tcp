@@ -1,5 +1,6 @@
 package io.github.endzeitbegins.nifi.flowovertcp.internal.codec.receive
 
+import io.github.endzeitbegins.nifi.flowovertcp.internal.utils.getNonNull
 import io.netty.channel.ChannelHandler
 import io.netty.channel.ChannelHandlerContext
 import io.netty.channel.SimpleChannelInboundHandler
@@ -18,8 +19,8 @@ import java.util.concurrent.atomic.AtomicReference
  */
 internal class ReceivableFlowFileHandler(
     private val addNetworkInformationAttributes: Boolean,
-    private val processSessionFactoryReference: AtomicReference<ProcessSessionFactory>,
-    private val targetRelationship: Relationship
+    private val processSessionFactoryReference: AtomicReference<out ProcessSessionFactory?>,
+    private val targetRelationship: Relationship,
 ) : SimpleChannelInboundHandler<ReceivableFlowFile>() {
 
     private var activeId: String? = null
@@ -80,19 +81,10 @@ internal class ReceivableFlowFileHandler(
         }
     }
 
-    private fun claimProcessSession(): ProcessSession {
-        return getProcessSessionFactory().createSession()
-    }
-
-    private fun getProcessSessionFactory(): ProcessSessionFactory {
-        var processSessionFactory: ProcessSessionFactory? = processSessionFactoryReference.get()
-        while (processSessionFactory == null) {
-            Thread.sleep(100)
-            processSessionFactory = processSessionFactoryReference.get()
-        }
-
-        return processSessionFactory
-    }
+    private fun claimProcessSession(): ProcessSession =
+        processSessionFactoryReference
+            .getNonNull()
+            .createSession()
 
     private fun InetSocketAddress.toTransitUri(): String {
         return "tcp://${hostString}:${port}"
