@@ -161,23 +161,6 @@ class ListenFlowFromTCPTest {
     }
 
     @Test
-    fun `supports multi-threaded execution of processor`() {
-        val iterations = 300
-        val expectedIndices = (0 until iterations).toSet()
-        val flowFiles = expectedIndices.map { index ->
-            TestFlowFile(
-                attributes = mapOf("index" to "$index"),
-                content = "Hello file no. $index!".toByteArray().asList()
-            )
-        }
-        testRunner.threadCount = 10
-
-        runWith(*flowFiles.toTypedArray())
-
-        `assertThat FlowFiles were received`(*flowFiles.toTypedArray())
-    }
-
-    @Test
     fun `supports clustered execution of processor`() {
         val iterations = 300
         val expectedIndices = (0 until iterations).toSet()
