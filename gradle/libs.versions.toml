@@ -2,7 +2,7 @@
 java = "8"
 kotlin = "1.9.0"
 kotlinxSerialization = "1.5.1"
-kotlinxCoroutines = "1.7.2"
+kotlinxCoroutines = "1.7.3"
 ktor = "2.3.2"
 nifi = "1.22.0"
 slf4j = "2.0.7"
