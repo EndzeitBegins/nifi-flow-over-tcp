@@ -1,6 +1,6 @@
 [versions]
 java = "8"
-kotlin = "1.9.10"
+kotlin = "1.9.20"
 kotlinxSerialization = "1.6.0"
 kotlinxCoroutines = "1.7.3"
 ktor = "2.3.5"
