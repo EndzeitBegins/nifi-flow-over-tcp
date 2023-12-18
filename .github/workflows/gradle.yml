@@ -34,14 +34,14 @@ jobs:
 
       ## Artifacts ##
       - name: Upload test results for debugging purposes
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         if: failure()
         with:
           name: test-report
           path: build/reports/tests/
           if-no-files-found: warn
       - name: Upload Apache NiFi logs for debugging purposes
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         if: failure()
         with:
           name: nifi-logs
@@ -49,7 +49,7 @@ jobs:
           if-no-files-found: warn
 
       - name: Upload built .nar artifact
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: nar
           path: build/libs/*.nar
