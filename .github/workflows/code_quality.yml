@@ -17,7 +17,7 @@ jobs:
         with:
           fetch-depth: 0
       - name: 'Qodana Scan'
-        uses: JetBrains/qodana-action@v2023.3.0
+        uses: JetBrains/qodana-action@v2023.3.1
         with:
           args: --baseline,qodana.sarif.json
         env:
