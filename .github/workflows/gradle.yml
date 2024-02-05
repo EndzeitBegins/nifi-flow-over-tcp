@@ -18,17 +18,17 @@ jobs:
         uses: gradle/wrapper-validation-action@27152f6fa06a6b8062ef7195c795692e51fc2c81
 
       - name: Assemble .nar artifact with Gradle
-        uses: gradle/gradle-build-action@a8f75513eafdebd8141bd1cd4e30fcd194af8dfa
+        uses: gradle/gradle-build-action@3b1b3b9a2104c2b47fbae53f3938079c00c9bb87
         with:
           arguments: assemble
 
       - name: Check project with Gradle
-        uses: gradle/gradle-build-action@a8f75513eafdebd8141bd1cd4e30fcd194af8dfa
+        uses: gradle/gradle-build-action@3b1b3b9a2104c2b47fbae53f3938079c00c9bb87
         with:
           arguments: check
 
       - name: Run integration tests with Gradle
-        uses: gradle/gradle-build-action@a8f75513eafdebd8141bd1cd4e30fcd194af8dfa
+        uses: gradle/gradle-build-action@3b1b3b9a2104c2b47fbae53f3938079c00c9bb87
         with:
           arguments: integrationTest
 
