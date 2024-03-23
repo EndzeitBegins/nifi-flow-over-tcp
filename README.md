@@ -1,3 +1,13 @@
+NiFi now supports important parts of the functionality this library provides, rendering it obsolete.
+
+You can use [MergeContent](https://nifi.apache.org/documentation/nifi-2.0.0-M2/components/org.apache.nifi/nifi-standard-nar/2.0.0-M2/org.apache.nifi.processors.standard.MergeContent/index.html) or [PackageFlowFile](https://nifi.apache.org/documentation/nifi-2.0.0-M2/components/org.apache.nifi/nifi-standard-nar/2.0.0-M2/org.apache.nifi.processors.standard.PackageFlowFile/index.html) to serialize a `FlowFile` with both its attributes and content. Use the format `flowfile-stream-v3` for serialization.
+
+This serialized data can be transferred over the network using any arbitrary protocol.
+
+After it has been received, the data can be deserialized back into the original content and attributes using [UnpackContent](https://nifi.apache.org/documentation/nifi-2.0.0-M2/components/org.apache.nifi/nifi-standard-nar/2.0.0-M2/org.apache.nifi.processors.standard.UnpackContent/index.html). 
+
+---
+
 # nifi-flow-over-tcp
 
 ![CI Status](https://github.com/EndzeitBegins/nifi-flow-over-tcp/actions/workflows/gradle.yml/badge.svg)
